@@ -1,66 +1,68 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
 
-export default function Home() {
+import React, { useCallback, useState } from "react";
+import initOpenCascade from "opencascade.js";
+
+export default function HomePage() {
+  const [busy, setBusy] = useState(false);
+
+  const generate = useCallback(async () => {
+    setBusy(true);
+    try {
+      // OpenCascade.js 初期化
+      const oc = await initOpenCascade();
+
+      // 1) トーラス生成 (major radius, minor radius)
+      // OCCTのトーラス生成は BRepPrimAPI_MakeTorus
+      const major = 30;
+      const minor = 10;
+      const mk = new oc.BRepPrimAPI_MakeTorus_1(major, minor);
+      const shape = mk.Shape(); // TopoDS_Shape
+
+      // 2) STL書き出し前に三角化（メッシュ化）
+      // ここで精度（deflection等）をパラメータ化すると「高品質プレビュー」と整合が取りやすい
+      const linearDeflection = 0.2; // 小さいほど細かい
+      const angularDeflection = 0.5; // ラジアン相当
+      new oc.BRepMesh_IncrementalMesh_2(
+        shape,
+        linearDeflection,
+        false,
+        angularDeflection,
+        true
+      );
+
+      // 3) STLを書き出す（仮想FSに出力 → 読み出し）
+      const outPath = "/torus.stl";
+      // StlAPI.Write静的メソッドを使用（shape, filename, isAscii）
+      oc.StlAPI.Write(shape, outPath, true);
+
+      // 4) 仮想FSから読み出してダウンロード
+      const data = oc.FS.readFile(outPath); // Uint8Array
+      const blob = new Blob([new Uint8Array(data)], {
+        type: "application/sla",
+      });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "torus.stl";
+      a.click();
+      URL.revokeObjectURL(url);
+
+      // 後片付け（WASMメモリ節約）
+      mk.delete?.();
+      shape.delete?.();
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main style={{ padding: 24 }}>
+      <h1>Torus STL Generator (OpenCascade.js)</h1>
+      <button onClick={generate} disabled={busy}>
+        {busy ? "Generating..." : "Generate torus.stl"}
+      </button>
+    </main>
   );
 }
