@@ -1,5 +1,7 @@
 generate:
 	npm install
-	npm run build
+	npm run build -- --webpack
 run:
-	npm run dev
+	npm run dev -- --webpack
+action: generate
+	echo ${NEXT_PUBLIC_REPO}
