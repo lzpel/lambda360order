@@ -9,8 +9,7 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  // Next.js 16ではTurbopackがデフォルト。webpackカスタム設定と併用するため空のturbopack設定を追加
-  turbopack: {},
+  // TurbopackはWASM対応が不完全なため無効化（experimental.turboを削除）
   webpack: (config) => {
     // OpenCascade.js docs: Webpack5(=Next.js) では fallback に fs 等を false
     config.resolve.fallback = {
