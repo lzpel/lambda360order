@@ -6,7 +6,9 @@
       "Bash(ls:*)",
       "Bash(timeout 15 npm run dev:*)",
       "Bash(pkill:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm view:*)",
+      "Bash(npm install:*)"
     ]
   }
 }
