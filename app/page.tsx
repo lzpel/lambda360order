@@ -1,12 +1,7 @@
 "use client";
 
 import React, { useCallback, useState, useEffect, useRef, useMemo } from "react";
-import {
-  initOpenCascade,
-  ocCore,
-  ocModelingAlgorithms,
-  ocDataExchangeBase,
-} from "opencascade.js";
+import initOpenCascade from "opencascade.js";
 import { Lambda360View, ModelData } from "lambda360view";
 
 export default function HomePage() {
@@ -19,9 +14,7 @@ export default function HomePage() {
 
   // ページ読み込み時にOpenCascadeを初期化
   useEffect(() => {
-    initOpenCascade({
-      libs: [ocCore, ocModelingAlgorithms, ocDataExchangeBase],
-    }).then((oc) => {
+    initOpenCascade().then((oc) => {
       ocRef.current = oc;
       setLoading(false);
     });
@@ -55,7 +48,7 @@ export default function HomePage() {
     while (explorer.More()) {
       const face = oc.TopoDS.Face_1(explorer.Current());
       const loc = new oc.TopLoc_Location_1();
-      const triangulation = oc.BRep_Tool.Triangulation(face, loc);
+      const triangulation = oc.BRep_Tool.Triangulation(face, loc, 0);
 
       if (!triangulation.IsNull()) {
         const tri = triangulation.get();

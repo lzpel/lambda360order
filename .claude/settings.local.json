@@ -8,7 +8,9 @@
       "Bash(pkill:*)",
       "Bash(grep:*)",
       "Bash(npm view:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(gh run list:*)",
+      "Bash(git -C /home/smith/lambda360order ls-files package-lock.json)"
     ]
   }
 }

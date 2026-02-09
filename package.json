@@ -11,7 +11,7 @@
   "dependencies": {
     "lambda360view": "^0.1.5",
     "next": "16.1.6",
-    "opencascade.js": "^2.0.0-beta.b5ff984",
+    "opencascade.js": "2.0.0-beta.b5ff984",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
