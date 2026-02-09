@@ -21,6 +21,8 @@ const nextConfig: NextConfig = {
       crypto: false,
       stream: false,
       path: false,
+      child_process: false,
+      ws: false,
     };
 
     // .wasm を URL(=asset) として扱う

@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useCallback, useState, useEffect, useRef, useMemo } from "react";
-import initOpenCascade, { OpenCascadeInstance } from "opencascade.js";
+import {
+  initOpenCascade,
+  ocCore,
+  ocModelingAlgorithms,
+  ocDataExchangeBase,
+} from "opencascade.js";
 import { Lambda360View, ModelData } from "lambda360view";
 
 export default function HomePage() {
@@ -9,11 +14,14 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [majorRadius, setMajorRadius] = useState(30);
   const [minorRadius, setMinorRadius] = useState(10);
-  const ocRef = useRef<OpenCascadeInstance | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ocRef = useRef<any>(null);
 
   // ページ読み込み時にOpenCascadeを初期化
   useEffect(() => {
-    initOpenCascade().then((oc) => {
+    initOpenCascade({
+      libs: [ocCore, ocModelingAlgorithms, ocDataExchangeBase],
+    }).then((oc) => {
       ocRef.current = oc;
       setLoading(false);
     });
@@ -47,7 +55,7 @@ export default function HomePage() {
     while (explorer.More()) {
       const face = oc.TopoDS.Face_1(explorer.Current());
       const loc = new oc.TopLoc_Location_1();
-      const triangulation = oc.BRep_Tool.Triangulation(face, loc, 0);
+      const triangulation = oc.BRep_Tool.Triangulation(face, loc);
 
       if (!triangulation.IsNull()) {
         const tri = triangulation.get();
@@ -95,7 +103,6 @@ export default function HomePage() {
           triangle.delete?.();
         }
 
-        tri.delete?.();
       }
 
       loc.delete?.();
