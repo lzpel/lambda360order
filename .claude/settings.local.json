@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(tasklist:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx next dev:*)",
+      "Bash(curl:*)",
+      "Bash(node -e:*)",
+      "Bash(node check_react.js:*)",
+      "Bash(npm view:*)"
+    ]
+  }
+}
