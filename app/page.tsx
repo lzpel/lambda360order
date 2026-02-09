@@ -1,15 +1,30 @@
 "use client";
 
 import React, { useCallback, useState, useEffect, useRef, useMemo } from "react";
+import dynamic from "next/dynamic";
 import initOpenCascade, { OpenCascadeInstance } from "opencascade.js";
-import { Lambda360View, ModelData } from "lambda360view";
+import type { ModelData } from "lambda360view";
+
+const Lambda360View = dynamic(
+  () => import("lambda360view").then((mod) => mod.Lambda360View),
+  { ssr: false }
+);
 
 export default function HomePage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [majorRadius, setMajorRadius] = useState(30);
-  const [minorRadius, setMinorRadius] = useState(10);
+  const [majorRadius, setMajorRadiusRaw] = useState(30);
+  const [minorRadius, setMinorRadiusRaw] = useState(10);
   const ocRef = useRef<OpenCascadeInstance | null>(null);
+
+  // majorRadius変更時にminorRadiusを自動クランプ
+  const setMajorRadius = (v: number) => {
+    setMajorRadiusRaw(v);
+    setMinorRadiusRaw((prev) => Math.min(prev, v - 1));
+  };
+  const setMinorRadius = (v: number) => {
+    setMinorRadiusRaw(Math.min(v, majorRadius - 1));
+  };
 
   // ページ読み込み時にOpenCascadeを初期化
   useEffect(() => {
@@ -23,6 +38,7 @@ export default function HomePage() {
   const modelData = useMemo<ModelData | null>(() => {
     const oc = ocRef.current;
     if (!oc || loading) return null;
+    if (minorRadius >= majorRadius || minorRadius < 1 || majorRadius < 2) return null;
 
     // トーラス形状を生成
     const mk = new oc.BRepPrimAPI_MakeTorus_1(majorRadius, minorRadius);
@@ -271,9 +287,18 @@ export default function HomePage() {
                   value={majorRadius}
                   onChange={(e) => setMajorRadius(Number(e.target.value))}
                   min={1}
+                  max={100}
                   style={{ marginLeft: 8, width: 80 }}
                 />
               </label>
+              <input
+                type="range"
+                min={1}
+                max={100}
+                value={majorRadius}
+                onChange={(e) => setMajorRadius(Number(e.target.value))}
+                style={{ width: "100%", marginTop: 4 }}
+              />
             </div>
 
             <div style={{ marginBottom: 12 }}>
@@ -284,10 +309,18 @@ export default function HomePage() {
                   value={minorRadius}
                   onChange={(e) => setMinorRadius(Number(e.target.value))}
                   min={1}
-                  max={majorRadius}
+                  max={majorRadius - 1}
                   style={{ marginLeft: 8, width: 80 }}
                 />
               </label>
+              <input
+                type="range"
+                min={1}
+                max={majorRadius}
+                value={minorRadius}
+                onChange={(e) => setMinorRadius(Number(e.target.value))}
+                style={{ width: "100%", marginTop: 4 }}
+              />
             </div>
 
             <div style={{ marginBottom: 16 }}>
@@ -309,9 +342,10 @@ export default function HomePage() {
             {modelData && (
               <Lambda360View
                 model={modelData}
-                backgroundColor="#1a1a2e"
-                edgeColor="#ffffff"
+                edgeColor="#000000"
                 showEdges={true}
+                showViewMenu={true}
+                upAxis="Z"
                 width="100%"
                 height="400px"
               />

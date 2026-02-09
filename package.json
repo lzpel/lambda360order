@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "lambda360view": "^0.1.2",
+    "lambda360view": "file:./lambda360view",
     "next": "16.1.6",
     "opencascade.js": "^2.0.0-beta.b5ff984",
     "react": "19.2.3",
