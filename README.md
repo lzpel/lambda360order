@@ -1,8 +1,8 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Demo
+## Live Demo
 
-- [Torus STL Generator](https://lzpel.github.io/lambda360order/)
+https://lzpel.github.io/lambda360order/
 
 ## Getting Started
 
