@@ -27,7 +27,8 @@
       "Bash(export PATH=\"/tmp/cmake-3.31.4-linux-x86_64/bin:$PATH\")",
       "Bash(/home/smith/lambda360order/sandbox-opencascade-rs/target/release/sandbox-opencascade-rs:*)",
       "Bash(find:*)",
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "Bash(*)"
     ]
   }
 }
