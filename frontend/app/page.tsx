@@ -18,6 +18,9 @@ export default function HomePage() {
         <li>
           <Link href="/brep">BREP Viewer (Binary)</Link>
         </li>
+        <li>
+          <Link href="/order0">Order Page (Mockup)</Link>
+        </li>
       </ul>
     </main>
   );
