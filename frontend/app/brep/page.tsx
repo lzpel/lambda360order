@@ -38,6 +38,8 @@ export default function Page() {
                 backgroundColor="#f0f0f0"
                 edgeColor="#000000"
                 showEdges={true}
+                showViewMenu={true}
+                orthographic={true}
                 width="100%"
                 height="100%"
             />
