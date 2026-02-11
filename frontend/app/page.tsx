@@ -21,6 +21,9 @@ export default function HomePage() {
         <li>
           <Link href="/order0">Order Page (Mockup)</Link>
         </li>
+        <li>
+          <Link href="/insert">Embed/Insert Demo</Link>
+        </li>
       </ul>
     </main>
   );
