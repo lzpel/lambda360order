@@ -11,7 +11,7 @@ export default function Page() {
     const [model, setModel] = useState<ModelData | null>(null);
 
     useEffect(() => {
-        fetch('/PA-001-DF7.json')
+        fetch(`${process.env.NEXT_PUBLIC_REPO}/PA-001-DF7.json`)
             .then(res => res.json())
             .then(data => {
                 const modelData = data as ModelData;
