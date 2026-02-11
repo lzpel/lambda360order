@@ -1,0 +1,8 @@
+[package]
+name = "sandbox-opencascade-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+opencascade = { git = "https://github.com/lzpel/opencascade-rs" }
+opencascade-sys = { git = "https://github.com/lzpel/opencascade-rs" }

@@ -1,0 +1,20 @@
+# Rust build artifacts
+target/
+.cargo/
+
+# Output files
+out/
+*.brep
+*.stl
+output_*.stl
+cache.brep
+cache_bin.brep
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Environment specific files
+.env
