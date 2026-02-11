@@ -6,6 +6,7 @@ export default function HomePage() {
   return (
     <main style={{ padding: 24, fontFamily: "sans-serif" }}>
       <h1>Lambda360 Order</h1>
+      <p>Repository: {process.env.NEXT_PUBLIC_REPO}</p>
       <p>Select a tool:</p>
       <ul>
         <li>
