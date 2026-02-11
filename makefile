@@ -11,3 +11,5 @@ run: # 開発用のサーバー起動コマンド フォアグラウンド実行
 	bash -c "$${MAKE_RECURSIVE}"
 deploy: # 本番用のサーバー起動コマンド バックグラウンド実行されます
 	bash -c "$${MAKE_RECURSIVE}"
+action: generate # github actionで実行される
+	echo ${NEXT_PUBLIC_REPO}
