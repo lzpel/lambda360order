@@ -10,7 +10,8 @@
       "Bash(npm view:*)",
       "Bash(npm install:*)",
       "Bash(gh run list:*)",
-      "Bash(git -C /home/smith/lambda360order ls-files package-lock.json)"
+      "Bash(git -C /home/smith/lambda360order ls-files package-lock.json)",
+      "Bash(npx next build:*)"
     ]
   }
 }
