@@ -1,132 +1,210 @@
+use clap::Parser;
 use opencascade::primitives::Shape;
-use std::fs;
+use serde::Serialize;
+use std::fs::File;
+use std::io::Write;
 use std::path::Path;
-use std::time::Instant;
+
+/// Simple program to convert STEP/BRep files to STL/JSON
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Input file path
+    #[arg(help = "Input file path (.step, .stp, .brep)")]
+    input: String,
+
+    /// Output file path
+    #[arg(help = "Output file path (.stl, .json, .brep)")]
+    output: String,
+}
+
+#[derive(Serialize)]
+struct ModelData {
+    version: u32,
+    name: String,
+    id: String,
+    parts: Vec<Part>,
+    bb: BoundingBox,
+}
+
+#[derive(Serialize)]
+struct Part {
+    id: String,
+    name: String,
+    #[serde(rename = "type")]
+    part_type: String, // "shapes"
+    shape: ShapeData,
+    color: String,
+    loc: Vec<Vec<f64>>, // [[pos], [quat]]
+}
+
+#[derive(Serialize)]
+struct ShapeData {
+    vertices: Vec<f32>,
+    normals: Vec<f32>,
+    triangles: Vec<u32>,
+    edges: Vec<f32>,
+}
+
+#[derive(Serialize)]
+struct BoundingBox {
+    xmin: f64,
+    xmax: f64,
+    ymin: f64,
+    ymax: f64,
+    zmin: f64,
+    zmax: f64,
+}
 
 fn main() {
-    let step_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("public/PA-001-DF7.STEP");
+    let args = Args::parse();
+    let input_path = Path::new(&args.input);
+    let output_path = Path::new(&args.output);
 
-    let out_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("out");
-    fs::create_dir_all(&out_dir).expect("Failed to create out/ directory");
-
-    let stl_step_path = out_dir.join("output_step.stl");
-    let stl_brep_path = out_dir.join("output_brep.stl");
-    let brep_path = out_dir.join("cache.brep");
-
-    println!("Target: {}", step_path.display());
-
-    // 1. STEP -> STL (現状)
-    println!("\n=== 1. STEP -> STL (Standard) ===");
-    let start = Instant::now();
-    println!("Reading STEP...");
-    let shape = Shape::read_step(&step_path).expect("Failed to read STEP file");
-    let step_read_duration = start.elapsed();
-    println!("  -> Read STEP: {:.2?}", step_read_duration);
-
-    let start_write = Instant::now();
-    println!("Writing STL to: {}", stl_step_path.display());
-    shape
-        .write_stl_with_tolerance(&stl_step_path, 0.1)
-        .expect("Failed to write STL file");
-    let stl_write_duration = start_write.elapsed();
-    println!("  -> Write STL: {:.2?}", stl_write_duration);
-    
-    println!("Total (STEP -> STL): {:.2?}", step_read_duration + stl_write_duration);
-
-
-    // 2. STEP -> BRep (Cache Creation)
-    println!("\n=== 2. STEP -> BRep (Cache Creation) ===");
-    let start_brep_write = Instant::now();
-    println!("Writing BRep to: {}", brep_path.display());
-    shape.write_brep(&brep_path).expect("Failed to write BRep file");
-    let brep_write_duration = start_brep_write.elapsed();
-    println!("  -> Write BRep: {:.2?}", brep_write_duration);
-
-
-    // 3. BRep -> STL (Cache Usage)
-    println!("\n=== 3. BRep -> STL (Cache Usage) ===");
-    let start_brep_read = Instant::now();
-    println!("Reading BRep...");
-    let shape_cached = Shape::read_brep(&brep_path).expect("Failed to read BRep file");
-    let brep_read_duration = start_brep_read.elapsed();
-    println!("  -> Read BRep: {:.2?}", brep_read_duration);
-
-    let start_write_2 = Instant::now();
-    println!("Writing STL to: {}", stl_brep_path.display());
-    shape_cached
-        .write_stl_with_tolerance(&stl_brep_path, 0.1)
-        .expect("Failed to write STL file");
-    let stl_write_from_brep_duration = start_write_2.elapsed();
-    println!("  -> Write STL: {:.2?}", stl_write_from_brep_duration);
-    
-    println!("Total (BRep -> STL): {:.2?}", brep_read_duration + stl_write_from_brep_duration);
-
-    // 4. BRep Binary -> STL (Cache Usage)
-    let brep_bin_path = out_dir.join("cache_bin.brep");
-    let stl_brep_bin_path = out_dir.join("output_brep_bin.stl");
-
-    println!("\n=== 4. BRep Binary -> STL (Cache Usage) ===");
-    let start_brep_bin_write = Instant::now();
-    println!("Writing BRep Binary to: {}", brep_bin_path.display());
-    shape.write_brep_bin(&brep_bin_path).expect("Failed to write BRep Binary file");
-    let brep_bin_write_duration = start_brep_bin_write.elapsed();
-    println!("  -> Write BRep Binary: {:.2?}", brep_bin_write_duration);
-
-    let start_brep_bin_read = Instant::now();
-    println!("Reading BRep Binary...");
-    let shape_cached_bin = Shape::read_brep_bin(&brep_bin_path).expect("Failed to read BRep Binary file");
-    let brep_bin_read_duration = start_brep_bin_read.elapsed();
-    println!("  -> Read BRep Binary: {:.2?}", brep_bin_read_duration);
-
-    let start_write_3 = Instant::now();
-    println!("Writing STL to: {}", stl_brep_bin_path.display());
-    shape_cached_bin
-        .write_stl_with_tolerance(&stl_brep_bin_path, 0.1)
-        .expect("Failed to write STL file");
-    let stl_write_from_brep_bin_duration = start_write_3.elapsed();
-    println!("  -> Write STL: {:.2?}", stl_write_from_brep_bin_duration);
-    
-    println!("Total (BRep Binary -> STL): {:.2?}", brep_bin_read_duration + stl_write_from_brep_bin_duration);
-
-
-    println!("\n=== Comparison ===");
-    println!("STEP Read time: {:.2?}", step_read_duration);
-    println!("BRep Read time: {:.2?}", brep_read_duration);
-    println!("BRep Bin Read time: {:.2?}", brep_bin_read_duration);
-    if brep_read_duration.as_millis() > 0 {
-        let speedup = step_read_duration.as_secs_f64() / brep_read_duration.as_secs_f64();
-        println!("Speedup (vs Text): {:.2}x", speedup);
-    }
-    if brep_bin_read_duration.as_millis() > 0 {
-        let speedup_bin = step_read_duration.as_secs_f64() / brep_bin_read_duration.as_secs_f64();
-        println!("Speedup (vs Binary): {:.2}x", speedup_bin);
+    // Ensure output directory exists
+    if let Some(parent) = output_path.parent() {
+        std::fs::create_dir_all(parent).expect("Failed to create output directory");
     }
 
-    // Validation
-    println!("\n=== Validation ===");
-    let size_step = std::fs::metadata(&stl_step_path).map(|m| m.len()).unwrap_or(0);
-    let size_brep = std::fs::metadata(&stl_brep_path).map(|m| m.len()).unwrap_or(0);
-    let size_brep_bin = std::fs::metadata(&stl_brep_bin_path).map(|m| m.len()).unwrap_or(0);
+    // Read Input
+    let shape = if let Some(ext) = input_path.extension() {
+        let ext_str = ext.to_str().unwrap().to_lowercase();
+        match ext_str.as_str() {
+            "step" | "stp" => {
+                println!("Reading STEP: {}", input_path.display());
+                Shape::read_step(input_path).expect("Failed to read STEP file")
+            }
+            "brep" => {
+                println!("Reading BRep: {}", input_path.display());
+                Shape::read_brep(input_path).or_else(|e| {
+                    println!("  -> Text read failed ({:?}), trying binary...", e);
+                    Shape::read_brep_bin(input_path)
+                }).expect("Failed to read BRep file (tried both text and binary)")
+            }
+            _ => panic!("Unsupported input extension: .{}", ext_str),
+        }
+    } else {
+        panic!("Input file has no extension");
+    };
 
-    println!("STEP -> STL Size: {} bytes", size_step);
-    println!("BRep Text -> STL Size: {} bytes", size_brep);
-    println!("BRep Bin -> STL Size: {} bytes", size_brep_bin);
-
-    if size_step == 0 { eprintln!("Error: STEP output is empty!"); }
-    if size_brep == 0 { eprintln!("Error: BRep output is empty!"); }
-    if size_brep_bin == 0 { eprintln!("Error: BRep Binary output is empty!"); }
-    
-    if size_step > 0 && size_brep > 0 && size_brep_bin > 0 {
-         let diff_text = (size_step as i64 - size_brep as i64).abs();
-         let diff_bin = (size_step as i64 - size_brep_bin as i64).abs();
-         
-         if diff_text == 0 && diff_bin == 0 {
-             println!("Success: All file sizes are identical.");
-         } else {
-             println!("Notice: File sizes differ. Text diff: {}, Bin diff: {}", diff_text, diff_bin);
-         }
+    // Write Output
+    if let Some(ext) = output_path.extension() {
+        let ext_str = ext.to_str().unwrap().to_lowercase();
+        match ext_str.as_str() {
+            "stl" => {
+                println!("Writing STL: {}", output_path.display());
+                shape
+                    .write_stl_with_tolerance(output_path, 0.1)
+                    .expect("Failed to write STL file");
+            }
+            "json" => {
+                println!("Writing JSON: {}", output_path.display());
+                write_json(&shape, output_path);
+            }
+            "brep" => {
+                println!("Writing BRep: {}", output_path.display());
+                shape.write_brep(output_path).expect("Failed to write BRep file");
+            }
+            _ => panic!("Unsupported output extension: .{}", ext_str),
+        }
+    } else {
+        panic!("Output file has no extension");
     }
+}
+
+fn write_json(shape: &Shape, output_path: &Path) {
+    let mesh = shape.mesh_with_tolerance(0.1).expect("Failed to mesh shape");
+
+    let mut vertices: Vec<f32> = Vec::with_capacity(mesh.vertices.len() * 3);
+    for v in &mesh.vertices {
+        vertices.push(v.x as f32);
+        vertices.push(v.y as f32);
+        vertices.push(v.z as f32);
+    }
+
+    let mut normals: Vec<f32> = Vec::with_capacity(mesh.normals.len() * 3);
+    for n in &mesh.normals {
+        normals.push(n.x as f32);
+        normals.push(n.y as f32);
+        normals.push(n.z as f32);
+    }
+
+    let triangles: Vec<u32> = mesh.indices.iter().map(|&i| i as u32).collect();
+
+    let mut edges: Vec<f32> = Vec::new();
+    for edge in shape.edges() {
+        let segments: Vec<_> = edge.approximation_segments().collect();
+        if segments.len() < 2 {
+            continue;
+        }
+        for i in 0..segments.len() - 1 {
+            let start = segments[i];
+            let end = segments[i+1];
+            edges.push(start.x as f32);
+            edges.push(start.y as f32);
+            edges.push(start.z as f32);
+            edges.push(end.x as f32);
+            edges.push(end.y as f32);
+            edges.push(end.z as f32);
+        }
+    }
+
+    let shape_data = ShapeData {
+        vertices,
+        normals,
+        triangles,
+        edges,
+    };
+
+    let part = Part {
+        id: "/model/part1".to_string(),
+        name: "Part1".to_string(),
+        part_type: "shapes".to_string(),
+        shape: shape_data,
+        color: "#808080".to_string(),
+        loc: vec![vec![0.0, 0.0, 0.0], vec![0.0, 0.0, 0.0, 1.0]],
+    };
+
+    // Calculate Bounding Box
+    let mut xmin = f64::INFINITY;
+    let mut xmax = f64::NEG_INFINITY;
+    let mut ymin = f64::INFINITY;
+    let mut ymax = f64::NEG_INFINITY;
+    let mut zmin = f64::INFINITY;
+    let mut zmax = f64::NEG_INFINITY;
+
+    for v in &mesh.vertices {
+        if v.x < xmin { xmin = v.x; }
+        if v.x > xmax { xmax = v.x; }
+        if v.y < ymin { ymin = v.y; }
+        if v.y > ymax { ymax = v.y; }
+        if v.z < zmin { zmin = v.z; }
+        if v.z > zmax { zmax = v.z; }
+    }
+
+    // Handle case where mesh is empty
+    if xmin == f64::INFINITY {
+        xmin = 0.0; xmax = 0.0;
+        ymin = 0.0; ymax = 0.0;
+        zmin = 0.0; zmax = 0.0;
+    }
+
+    let bb = BoundingBox {
+        xmin, xmax, ymin, ymax, zmin, zmax,
+    };
+
+    let model_data = ModelData {
+        version: 3,
+        name: "ConvertedModel".to_string(),
+        id: "/model".to_string(),
+        parts: vec![part],
+        bb,
+    };
+
+    let json = serde_json::to_string(&model_data).expect("Failed to serialize model data");
+    
+    let mut file = File::create(output_path).expect("Failed to create output file");
+    file.write_all(json.as_bytes()).expect("Failed to write to output file");
+
+    println!("Successfully wrote model data to: {}", output_path.display());
 }

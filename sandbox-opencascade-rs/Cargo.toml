@@ -3,6 +3,10 @@ name = "sandbox-opencascade-rs"
 version = "0.1.0"
 edition = "2021"
 
+
 [dependencies]
 opencascade = { git = "https://github.com/lzpel/opencascade-rs" }
 opencascade-sys = { git = "https://github.com/lzpel/opencascade-rs" }
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
