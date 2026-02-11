@@ -3,8 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // GitHub Pagesへの静的エクスポート
   output: "export",
-  // サブパスでホストする場合のベースパス（GitHub Pagesの場合リポジトリ名）
-  basePath: process.env.NEXT_PUBLIC_REPO ? `/${process.env.NEXT_PUBLIC_REPO}` : "",
+	basePath: process.env.NEXT_PUBLIC_REPO ? `/${process.env.NEXT_PUBLIC_REPO}` : undefined,
+	assetPrefix: process.env.NEXT_PUBLIC_REPO ? `/${process.env.NEXT_PUBLIC_REPO}/` : undefined,
+	env: {
+		NEXT_PUBLIC_PREFIX: process.env.NEXT_PUBLIC_REPO ? `/${process.env.NEXT_PUBLIC_REPO}` : "",
+	},
   // 画像最適化は静的エクスポートでは使用不可
   images: {
     unoptimized: true,
