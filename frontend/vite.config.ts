@@ -22,7 +22,7 @@ export default defineConfig({
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
-  base: './', // GitHub Pagesでの相対パス対応
+  base: process.env.NEXT_PUBLIC_REPO ? `/${process.env.NEXT_PUBLIC_REPO}/` : './',
   publicDir: '../public',
   build: isLib ? {
     // ライブラリビルド設定 (widget.js)
