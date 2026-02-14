@@ -11,17 +11,15 @@
 - **技術スタック**: Rust (Axum, Lambda Web Adapter)
 - **役割**: 本来はフロントエンドのJavaScriptで完結させたい処理のうち、計算負荷が高くブラウザでは処理速度が不足するタスク（3Dデータの重い演算など）をオフロードするための実行環境です。
 
-### `/frontend` (Web Application)
-- **技術スタック**: Next.js (App Router, React)
-- **役割**: ユーザーが3Dモデルを確認し、注文構成を選択するためのメインGUI。
-  - `/torus`: トーラス形状の生成デモ
-  - `/step`: STEPファイルの表示
-  - `/order0`: 発注プロセスのモックアップ
-
-### `/embedded` (Order Widget)
+### `/frontend` (Web Application & Order Widget)
 - **技術スタック**: Vite, React, TypeScript
-- **役割**: 外部サイトに埋め込み可能な発注ウィジェット。ビルド後 `widget.js` として配信されます。
-- **統合**: `frontend` プロジェクト内からは React コンポーネントとして直接インポートして利用することも可能です（`@embedded/OrderWidget` を使用）。
+- **役割**: メインのWebアプリケーションおよび外部埋め込み用ウィジェット。
+  - `make run` または GitHub Pages: デモアプリケーションとして動作
+  - `widget.js`: 外部サイト埋め込み用スクリプトとしてビルド
+- **主なページ**:
+  - `/brep`: BREPビューワー
+  - `/order0`: 発注プロセスモックアップ
+  - `/insert`: 埋め込みデモ
 
 ### `/aws` (Infrastructure)
 - **技術スタック**: AWS CDK (TypeScript)

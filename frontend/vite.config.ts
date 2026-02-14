@@ -19,6 +19,7 @@ export default defineConfig({
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
   base: './', // GitHub Pagesでの相対パス対応
+  publicDir: '../public',
   build: isLib ? {
     // ライブラリビルド設定 (widget.js)
     lib: {

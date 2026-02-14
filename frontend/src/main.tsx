@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
+import './globals.css';
 import { BrowserRouter, useRoutes } from 'react-router-dom';
 import routes from '~react-pages';
 
