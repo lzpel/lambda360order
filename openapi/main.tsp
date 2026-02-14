@@ -6,7 +6,7 @@ using TypeSpec.Http;
 @service(#{
   title: "Lambda360 API",
 })
-@server("/", "Main server")
+@server("https://example.com", "Main server")
 namespace Lambda360;
 
 @route("/hello")

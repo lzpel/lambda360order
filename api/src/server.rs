@@ -2,7 +2,6 @@ use crate::openapi::*;
 use opencascade::primitives::Shape;
 use std::path::Path;
 use gltf_json as json;
-use std::mem;
 use std::io::Write;
 
 pub struct Server {}

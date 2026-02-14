@@ -220,7 +220,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 			}
 		}));
 	let router = router.route("/openapi.json", axum::routing::get(|| async move{
-			r###"{"components":{"schemas":{"FileExists":{"properties":{"exists":{"type":"boolean"},"expiresAt":{"format":"date-time","type":"string"},"uploadUrl":{"type":"string"}},"required":["exists"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/hello":{"get":{"operationId":"Hello_sayHello","responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}},"/step/{sha256}":{"get":{"operationId":"Step_exists","parameters":[{"in":"path","name":"sha256","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"properties":{"exists":{"type":"boolean"},"expiresAt":{"format":"date-time","type":"string"},"uploadUrl":{"type":"string"}},"required":["exists"],"type":"object"}}},"description":"The request has succeeded."}}}},"/view":{"get":{"operationId":"Viewer_view","parameters":[{"explode":false,"in":"query","name":"sha256","required":true,"schema":{"type":"string"},"style":"form"}],"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"/","variables":{}}]}"###
+			r###"{"components":{"schemas":{"FileExists":{"properties":{"exists":{"type":"boolean"},"expiresAt":{"format":"date-time","type":"string"},"uploadUrl":{"type":"string"}},"required":["exists"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/hello":{"get":{"operationId":"Hello_sayHello","responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}},"/step/{sha256}":{"get":{"operationId":"Step_exists","parameters":[{"in":"path","name":"sha256","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"properties":{"exists":{"type":"boolean"},"expiresAt":{"format":"date-time","type":"string"},"uploadUrl":{"type":"string"}},"required":["exists"],"type":"object"}}},"description":"The request has succeeded."}}}},"/view":{"get":{"operationId":"Viewer_view","parameters":[{"explode":false,"in":"query","name":"sha256","required":true,"schema":{"type":"string"},"style":"form"}],"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"https://example.com","variables":{}}]}"###
 		}))
 		.route("/ui", axum::routing::get(|| async move{
 			axum::response::Html(r###"
@@ -253,12 +253,14 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 /// サーバのURLプレフィックスにnest_serviceでルーターをマウントする
 pub fn axum_router<S: ApiInterface + Sync + Send + 'static>(instance: S)->axum::Router{
 	let instance_arc=std::sync::Arc::new(instance);
-	axum_router_operations(instance_arc.clone())
+	let mut router = axum::Router::new();
+	router = router.merge(axum_router_operations(instance_arc.clone()));
+	router
 }
 
 /// サーバのURL一覧を標準出力に表示する
 pub fn print_axum_router(port:u16){
-	println!("http://localhost:{}//ui", port);
+	println!("http://localhost:{}/ui", port);
 }
 
 /// テスト用のサーバ実装（全メソッドがデフォルト値を返す）

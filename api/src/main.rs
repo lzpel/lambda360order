@@ -1,7 +1,11 @@
+#[allow(dead_code)]
+#[allow(unused_variables)]
+#[allow(unused_imports)]
+#[allow(unused_variables)]
+#[allow(non_snake_case)]
 mod openapi;
 mod server;
 
-use std::sync::Arc;
 use crate::openapi::{axum_router, print_axum_router};
 use crate::server::Server;
 
