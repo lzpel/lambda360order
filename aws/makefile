@@ -8,4 +8,4 @@ run:
 	# No run step for aws
 
 deploy:
-	npm run cdk -- deploy
+	npm run cdk -- deploy --require-approval never
