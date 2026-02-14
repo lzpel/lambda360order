@@ -1,4 +1,4 @@
-MAKE_RECURSIVE_DIRS := openapi frontend api aws
+MAKE_RECURSIVE_DIRS := openapi frontend api # aws
 OUT_FRONTEND_DIR := api/out
 SECRET_DIR_AGE := secret secret.age
 define MAKE_RECURSIVE
