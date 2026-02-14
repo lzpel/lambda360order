@@ -20,7 +20,7 @@ impl ApiInterface for Server {
     }
 
     async fn viewer_view(&self, _req: ViewerViewRequest) -> ViewerViewResponse {
-        // 指定された sha256 は現在無視して public/PA-001-DF7.brep をロードする
+        // Currently ignores the specified sha256 and loads public/PA-001-DF7.brep
         let brep_path = Path::new("../public/PA-001-DF7.brep");
         
         if !brep_path.exists() {
@@ -32,7 +32,7 @@ impl ApiInterface for Server {
             );
         }
 
-        // BRep 読み込み
+        // Read BRep
         let shape = match Shape::read_brep(brep_path) {
             Ok(s) => s,
             Err(_) => match Shape::read_brep_bin(brep_path) {
@@ -48,7 +48,7 @@ impl ApiInterface for Server {
             }
         };
 
-        // メッシュ抽出
+        // Extract mesh
         let mesh = match shape.mesh_with_tolerance(0.1) {
             Ok(m) => m,
             Err(e) => {
@@ -61,8 +61,8 @@ impl ApiInterface for Server {
             }
         };
 
-        // GLB 手書き実装
-        let glb_bytes = match create_glb(&mesh) {
+        // GLB generation with flat normals and edges
+        let glb_bytes = match create_glb(&mesh, &shape) {
             Ok(bytes) => bytes,
             Err(e) => {
                 return ViewerViewResponse::Raw(
@@ -78,35 +78,85 @@ impl ApiInterface for Server {
     }
 }
 
-fn create_glb(mesh: &opencascade::mesh::Mesh) -> Result<Vec<u8>, String> {
+fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, String> {
     use json::validation::Checked::Valid;
 
-    // データの変換 (f64 -> f32, usize -> u32)
-    let v_data: Vec<[f32; 3]> = mesh.vertices.iter().map(|v| [v.x as f32, v.y as f32, v.z as f32]).collect();
-    let n_data: Vec<[f32; 3]> = mesh.normals.iter().map(|n| [n.x as f32, n.y as f32, n.z as f32]).collect();
-    let i_data: Vec<u32> = mesh.indices.iter().map(|&i| i as u32).collect();
+    // De-index the mesh and compute per-face (flat) normals
+    // This ensures each triangle has its own vertices with a correct face normal,
+    // preventing the "same direction faces with different brightness" issue.
+    let src_verts: Vec<[f32; 3]> = mesh.vertices.iter().map(|v| [v.x as f32, v.y as f32, v.z as f32]).collect();
 
-    let v_bytes = unsafe { std::slice::from_raw_parts(v_data.as_ptr() as *const u8, v_data.len() * 12) };
-    let n_bytes = unsafe { std::slice::from_raw_parts(n_data.as_ptr() as *const u8, n_data.len() * 12) };
-    let i_bytes = unsafe { std::slice::from_raw_parts(i_data.as_ptr() as *const u8, i_data.len() * 4) };
+    let tri_count = mesh.indices.len() / 3;
+    let vert_count = tri_count * 3; // 3 vertices per triangle after de-indexing
+
+    let mut flat_vertices: Vec<[f32; 3]> = Vec::with_capacity(vert_count);
+    let mut flat_normals: Vec<[f32; 3]> = Vec::with_capacity(vert_count);
+
+    for tri in 0..tri_count {
+        let i0 = mesh.indices[tri * 3] as usize;
+        let i1 = mesh.indices[tri * 3 + 1] as usize;
+        let i2 = mesh.indices[tri * 3 + 2] as usize;
+
+        let v0 = src_verts[i0];
+        let v1 = src_verts[i1];
+        let v2 = src_verts[i2];
+
+        // Compute face normal via cross product
+        let edge1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]];
+        let edge2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]];
+        let nx = edge1[1] * edge2[2] - edge1[2] * edge2[1];
+        let ny = edge1[2] * edge2[0] - edge1[0] * edge2[2];
+        let nz = edge1[0] * edge2[1] - edge1[1] * edge2[0];
+        let len = (nx * nx + ny * ny + nz * nz).sqrt();
+        let normal = if len > 1e-10 {
+            [nx / len, ny / len, nz / len]
+        } else {
+            [0.0, 1.0, 0.0] // fallback
+        };
+
+        flat_vertices.push(v0);
+        flat_vertices.push(v1);
+        flat_vertices.push(v2);
+        flat_normals.push(normal);
+        flat_normals.push(normal);
+        flat_normals.push(normal);
+    }
+
+    // No indices needed - sequential vertex rendering
+    let v_bytes = unsafe { std::slice::from_raw_parts(flat_vertices.as_ptr() as *const u8, flat_vertices.len() * 12) };
+    let n_bytes = unsafe { std::slice::from_raw_parts(flat_normals.as_ptr() as *const u8, flat_normals.len() * 12) };
 
     let mut buffer = Vec::new();
     buffer.extend_from_slice(v_bytes);
     let v_offset = 0;
     let v_len = v_bytes.len();
 
-    // 4バイトアライメント
+    // 4-byte alignment
     while buffer.len() % 4 != 0 { buffer.push(0); }
     let n_offset = buffer.len();
     buffer.extend_from_slice(n_bytes);
     let n_len = n_bytes.len();
 
-    while buffer.len() % 4 != 0 { buffer.push(0); }
-    let i_offset = buffer.len();
-    buffer.extend_from_slice(i_bytes);
-    let i_len = i_bytes.len();
-
     let buffer_total_len = buffer.len();
+
+    // Extract edges from shape
+    let mut edge_data: Vec<f32> = Vec::new();
+    for edge in shape.edges() {
+        let segments: Vec<_> = edge.approximation_segments().collect();
+        if segments.len() < 2 {
+            continue;
+        }
+        for i in 0..segments.len() - 1 {
+            let start = segments[i];
+            let end = segments[i + 1];
+            edge_data.push(start.x as f32);
+            edge_data.push(start.y as f32);
+            edge_data.push(start.z as f32);
+            edge_data.push(end.x as f32);
+            edge_data.push(end.y as f32);
+            edge_data.push(end.z as f32);
+        }
+    }
 
     let mut root = json::Root::default();
     root.buffers.push(json::Buffer {
@@ -117,8 +167,7 @@ fn create_glb(mesh: &opencascade::mesh::Mesh) -> Result<Vec<u8>, String> {
         extras: Default::default(),
     });
 
-    // Accessors & BufferViews
-    // Vertices
+    // BufferView & Accessor: Vertices
     root.buffer_views.push(json::buffer::View {
         buffer: json::Index::new(0),
         byte_length: json::validation::USize64(v_len as u64),
@@ -132,7 +181,7 @@ fn create_glb(mesh: &opencascade::mesh::Mesh) -> Result<Vec<u8>, String> {
     root.accessors.push(json::Accessor {
         buffer_view: Some(json::Index::new(0)),
         byte_offset: Some(json::validation::USize64(0)),
-        count: json::validation::USize64(v_data.len() as u64),
+        count: json::validation::USize64(flat_vertices.len() as u64),
         component_type: Valid(json::accessor::GenericComponentType(json::accessor::ComponentType::F32)),
         extensions: None,
         extras: Default::default(),
@@ -144,7 +193,7 @@ fn create_glb(mesh: &opencascade::mesh::Mesh) -> Result<Vec<u8>, String> {
         sparse: None,
     });
 
-    // Normals
+    // BufferView & Accessor: Normals
     root.buffer_views.push(json::buffer::View {
         buffer: json::Index::new(0),
         byte_length: json::validation::USize64(n_len as u64),
@@ -158,7 +207,7 @@ fn create_glb(mesh: &opencascade::mesh::Mesh) -> Result<Vec<u8>, String> {
     root.accessors.push(json::Accessor {
         buffer_view: Some(json::Index::new(1)),
         byte_offset: Some(json::validation::USize64(0)),
-        count: json::validation::USize64(n_data.len() as u64),
+        count: json::validation::USize64(flat_normals.len() as u64),
         component_type: Valid(json::accessor::GenericComponentType(json::accessor::ComponentType::F32)),
         extensions: None,
         extras: Default::default(),
@@ -170,33 +219,7 @@ fn create_glb(mesh: &opencascade::mesh::Mesh) -> Result<Vec<u8>, String> {
         sparse: None,
     });
 
-    // Indices
-    root.buffer_views.push(json::buffer::View {
-        buffer: json::Index::new(0),
-        byte_length: json::validation::USize64(i_len as u64),
-        byte_offset: Some(json::validation::USize64(i_offset as u64)),
-        byte_stride: None,
-        name: None,
-        target: Some(Valid(json::buffer::Target::ElementArrayBuffer)),
-        extensions: None,
-        extras: Default::default(),
-    });
-    root.accessors.push(json::Accessor {
-        buffer_view: Some(json::Index::new(2)),
-        byte_offset: Some(json::validation::USize64(0)),
-        count: json::validation::USize64(i_data.len() as u64),
-        component_type: Valid(json::accessor::GenericComponentType(json::accessor::ComponentType::U32)),
-        extensions: None,
-        extras: Default::default(),
-        type_: Valid(json::accessor::Type::Scalar),
-        min: None,
-        max: None,
-        name: None,
-        normalized: false,
-        sparse: None,
-    });
-
-    // Mesh & Primitive
+    // Mesh & Primitive (no indices - flat/de-indexed mesh)
     let primitive = json::mesh::Primitive {
         attributes: {
             let mut map = std::collections::BTreeMap::new();
@@ -206,7 +229,7 @@ fn create_glb(mesh: &opencascade::mesh::Mesh) -> Result<Vec<u8>, String> {
         },
         extensions: None,
         extras: Default::default(),
-        indices: Some(json::Index::new(2)),
+        indices: None, // No indices - vertices are already de-indexed
         material: None,
         mode: Valid(json::mesh::Mode::Triangles),
         targets: None,
@@ -220,9 +243,20 @@ fn create_glb(mesh: &opencascade::mesh::Mesh) -> Result<Vec<u8>, String> {
         weights: None,
     });
 
-    // Node & Scene
+    // Node with edge data in extras (read by Lambda360View as userData.edges)
+    let node_extras: json::extras::Extras = if !edge_data.is_empty() {
+        let edges_json = serde_json::json!({ "edges": edge_data });
+        let raw = serde_json::value::RawValue::from_string(
+            serde_json::to_string(&edges_json).map_err(|e| e.to_string())?
+        ).map_err(|e| e.to_string())?;
+        Some(raw)
+    } else {
+        None
+    };
+
     root.nodes.push(json::Node {
         mesh: Some(json::Index::new(0)),
+        extras: node_extras,
         ..Default::default()
     });
 
