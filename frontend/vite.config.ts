@@ -19,6 +19,10 @@ export default defineConfig({
     wasm(),
     topLevelAwait(),
   ],
+  server: {
+    port: Number(process.env.PORT) || 7999,
+    strictPort: true,
+  },
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
   },

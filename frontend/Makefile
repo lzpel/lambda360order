@@ -1,6 +1,7 @@
 
 generate:
 	npm install
+	npx openapi-typescript-codegen --input ../public/openapi.json --output ./src/out --client fetch
 
 run:
 	npm run dev
