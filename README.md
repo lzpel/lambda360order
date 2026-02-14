@@ -21,6 +21,7 @@
 ### `/embedded` (Order Widget)
 - **技術スタック**: Vite, React, TypeScript
 - **役割**: 外部サイトに埋め込み可能な発注ウィジェット。ビルド後 `widget.js` として配信されます。
+- **統合**: `frontend` プロジェクト内からは React コンポーネントとして直接インポートして利用することも可能です（`@embedded/OrderWidget` を使用）。
 
 ### `/aws` (Infrastructure)
 - **技術スタック**: AWS CDK (TypeScript)
