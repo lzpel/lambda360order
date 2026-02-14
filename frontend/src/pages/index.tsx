@@ -12,7 +12,7 @@ export default function IndexPage() {
             <p>Select a tool:</p>
             <ul>
                 <li>
-                    <Link to="/brep">BREP Viewer (Binary)</Link>
+                    <Link to="/server">3D Viewer (Server)</Link>
                 </li>
                 <li>
                     <Link to="/order0">Order Page (Mockup)</Link>

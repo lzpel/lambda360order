@@ -9,17 +9,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "lambda360view": "^0.1.5",
+    "lambda360view": "^0.1.7",
     "opencascade.js": "^2.0.0-beta.b5ff984",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "0.92.4",
     "@types/node": "^25.2.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.5.2",
-    "openapi-typescript-codegen": "^0.30.0",
     "react-router-dom": "^7.13.0",
     "typescript": "^5",
     "vite": "^6.3.5",
