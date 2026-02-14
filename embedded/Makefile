@@ -5,10 +5,10 @@ generate:
 	cp dist/widget.js ../public/widget.js
 
 run:
-	npm run dev
-
-build:
-	npm run build
+	# npm run preview
 
 deploy:
-	npm run preview
+	#
+
+dev:
+	npm run dev
