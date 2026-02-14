@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import Pages from 'vite-plugin-pages';
 import { resolve } from 'path';
+import wasm from "vite-plugin-wasm";
+import topLevelAwait from "vite-plugin-top-level-await";
 
 // 環境変数でビルドモードを切り替え（デフォルトはアプリモード）
 // BUILD_MODE=lib -> widget.js (ライブラリ)
@@ -14,6 +16,8 @@ export default defineConfig({
     Pages({
       dirs: 'src/pages',
     }),
+    wasm(),
+    topLevelAwait(),
   ],
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
@@ -35,6 +39,7 @@ export default defineConfig({
     },
     cssCodeSplit: false,
     emptyOutDir: false, // distを消さない
+    outDir: 'out',
   } : {
     // アプリビルド設定 (index.html)
     rollupOptions: {
@@ -43,5 +48,6 @@ export default defineConfig({
       },
     },
     emptyOutDir: true,
+    outDir: 'out',
   },
 });
