@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect } from 'react';
 import { Lambda360View, ModelData } from 'lambda360view';
 

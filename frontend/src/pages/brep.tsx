@@ -1,27 +1,22 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Lambda360View } from 'lambda360view';
-import { ModelData } from 'lambda360view';
-
-// Ensure type compatibility if direct import has issues with 'as unknown' or defining the type locally
-// The imported JSON might be inferred as a generic object, so we might need casting.
+import React, { useState, useEffect } from 'react';
+import { Lambda360View, ModelData } from 'lambda360view';
 
 export default function Page() {
     const [model, setModel] = useState<ModelData | null>(null);
 
     useEffect(() => {
-        fetch(`${process.env.NEXT_PUBLIC_PREFIX}/PA-001-DF7.json`)
+        const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+        fetch(`${baseUrl}PA-001-DF7.json`)
             .then(res => res.json())
             .then(data => {
                 const modelData = data as ModelData;
                 if (modelData.parts) {
-                    modelData.parts.forEach((part) => {
+                    modelData.parts.forEach((part: any) => {
                         if (part.shape) {
-                            part.shape.vertices = new Float32Array(part.shape.vertices as unknown as number[]);
-                            part.shape.normals = new Float32Array(part.shape.normals as unknown as number[]);
-                            part.shape.triangles = new Uint32Array(part.shape.triangles as unknown as number[]);
-                            part.shape.edges = new Float32Array(part.shape.edges as unknown as number[]);
+                            part.shape.vertices = new Float32Array(part.shape.vertices);
+                            part.shape.normals = new Float32Array(part.shape.normals);
+                            part.shape.triangles = new Uint32Array(part.shape.triangles);
+                            part.shape.edges = new Float32Array(part.shape.edges);
                         }
                     });
                 }
