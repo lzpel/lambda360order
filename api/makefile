@@ -4,5 +4,5 @@ generate:
 run:
 	cargo run
 
-deploy:
-	# No deploy step for api
+test:
+	docker build -t lambda360order .

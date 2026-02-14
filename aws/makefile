@@ -1,3 +1,6 @@
+bootstrap:
+	npm run cdk -- bootstrap
+
 generate:
 	npm install
 
