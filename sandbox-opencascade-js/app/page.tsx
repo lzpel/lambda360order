@@ -32,53 +32,90 @@ export default function Page() {
                 const buffer = await response.arrayBuffer();
                 const data = new Uint8Array(buffer);
 
-                const filename = "/input.brep";
-                try { oc.FS.unlink(filename); } catch { /* ignore */ }
-                oc.FS.createDataFile("/", "input.brep", data, true, true, true);
+                const filename = "input.brep";
+                const fullPath = "/" + filename;
+                try { oc.FS.unlink(fullPath); } catch { /* ignore */ }
+                oc.FS.createDataFile("/", filename, data, true, true, true);
 
                 setStatus("BREP 読み込み中...");
                 const shape = new oc.TopoDS_Shape();
                 const builder = new oc.BRep_Builder();
 
-                // Try to read BREP with flexible function name resolution
+                // Detect if it's binary or ASCII
+                const headerBytes = data.slice(0, 20);
+                const headerStr = new TextDecoder().decode(headerBytes);
+                // ASCII BREP starts with "DBRep_DrawableShape" or similar.
+                // Binary BREP starts with "BIN" or has non-ASCII chars early on.
+                const isBinary = !headerStr.startsWith("DBRep") && (headerStr.startsWith("BIN") || data[0] < 32 || data[0] > 126);
+                console.log(`File header start: "${headerStr.substring(0, 15).replace(/\n/g, "\\n")}...", isBinary: ${isBinary}`);
+
                 let result = false;
                 const progress = new oc.Message_ProgressRange_1();
 
-                // BindingError suggests incorrect arguments. 
-                // Newer OCCT versions require Message_ProgressRange as the 4th argument.
-                // We specifically target Read_2 which was found in the list.
-                try {
-                    // Try with 4 arguments: (Shape, File, Builder, Progress)
-                    console.log("Attempting Read_2 with 4 arguments...");
-                    const res = oc.BRepTools.Read_2(shape, filename, builder, progress);
-                    if (res) {
-                        result = true;
-                        console.log("Successfully read BREP using Read_2 (4 args)");
-                    }
-                } catch (e) {
-                    console.warn("Read_2 with 4 args failed:", e);
-                    try {
-                        // Fallback to 3 arguments
-                        console.log("Attempting Read_2 with 3 arguments...");
-                        const res = oc.BRepTools.Read_2(shape, filename, builder);
-                        if (res) {
-                            result = true;
-                            console.log("Successfully read BREP using Read_2 (3 args)");
+                // If it looks binary, try BinTools first
+                if (isBinary && oc.BinTools) {
+                    const binMethods = ["Read_2", "Read", "Read_1"];
+                    for (const method of binMethods) {
+                        try {
+                            console.log(`Attempting BinTools.${method} with path: ${fullPath}...`);
+                            let res;
+                            if (method === "Read_2") {
+                                // BinTools.Read_2 usually takes (Shape, Filename, Progress)
+                                res = oc.BinTools.Read_2(shape, fullPath, progress);
+                            } else {
+                                // @ts-ignore
+                                res = oc.BinTools[method]?.(shape, fullPath);
+                            }
+
+                            if (res) {
+                                result = true;
+                                console.log(`Successfully read binary BREP using BinTools.${method}`);
+                                break;
+                            }
+                        } catch (e) {
+                            console.warn(`BinTools.${method} failed:`, e);
                         }
-                    } catch (e2) {
-                        console.warn("Read_2 with 3 args failed:", e2);
                     }
                 }
+
+                // Fallback to BRepTools (ASCII reader) if not already successful
+                if (!result) {
+                    // BindingError suggests incorrect arguments. 
+                    // Newer OCCT versions require Message_ProgressRange as the 4th argument.
+                    // We specifically target Read_2 which was found in the list.
+                    try {
+                        // Try with 4 arguments: (Shape, File, Builder, Progress)
+                        console.log("Attempting BRepTools.Read_2 with 4 arguments...");
+                        const res = oc.BRepTools.Read_2(shape, fullPath, builder, progress);
+                        if (res) {
+                            result = true;
+                            console.log("Successfully read BREP using BRepTools.Read_2 (4 args)");
+                        }
+                    } catch (e) {
+                        console.warn("BRepTools.Read_2 with 4 args failed:", e);
+                        try {
+                            // Fallback to 3 arguments
+                            console.log("Attempting BRepTools.Read_2 with 3 arguments...");
+                            const res = oc.BRepTools.Read_2(shape, fullPath, builder);
+                            if (res) {
+                                result = true;
+                                console.log("Successfully read BREP using BRepTools.Read_2 (3 args)");
+                            }
+                        } catch (e2) {
+                            console.warn("BRepTools.Read_2 with 3 args failed:", e2);
+                        }
+                    }
+                }
+
+                console.log("Deleting progress range...");
                 progress.delete();
+                console.log("Progress range deleted.");
 
                 if (!result) {
-                    console.error("All BRepTools.Read attempts failed");
-                    // Debug: list available methods to help diagnosis
-                    try {
-                        console.log("Available BRepTools methods:", Object.keys(oc.BRepTools));
-                    } catch (e) {
-                        console.error("Failed to list BRepTools methods", e);
-                    }
+                    console.error("All BREP read attempts failed");
+                    console.log("oc.BinTools available:", !!oc.BinTools);
+                    if (oc.BinTools) console.log("BinTools methods:", Object.keys(oc.BinTools));
+                    console.log("Available BRepTools methods:", Object.keys(oc.BRepTools));
                 }
                 if (!result) {
                     setStatus("BREP 読み込み失敗");
@@ -86,7 +123,9 @@ export default function Page() {
                 }
 
                 setStatus("メッシュ生成中...");
+                console.log("Starting meshing...");
                 new oc.BRepMesh_IncrementalMesh_2(shape, 0.1, false, 0.5, true);
+                console.log("Meshing completed.");
 
                 const vertices: number[] = [];
                 const normals: number[] = [];
@@ -97,6 +136,7 @@ export default function Page() {
                 let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
                 setStatus("三角形抽出中...");
+                console.log("Starting triangulation extraction...");
                 const explorer = new oc.TopExp_Explorer_2(
                     shape,
                     oc.TopAbs_ShapeEnum.TopAbs_FACE,
