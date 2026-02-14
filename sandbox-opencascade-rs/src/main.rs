@@ -102,8 +102,14 @@ fn main() {
                 write_json(&shape, output_path);
             }
             "brep" => {
-                println!("Writing BRep: {}", output_path.display());
-                shape.write_brep(output_path).expect("Failed to write BRep file");
+                let ext_original = ext.to_str().unwrap();
+                if ext_original == "BREP" {
+                    println!("Writing Text BRep: {}", output_path.display());
+                    shape.write_brep(output_path).expect("Failed to write Text BRep file");
+                } else {
+                    println!("Writing Binary BRep: {}", output_path.display());
+                    shape.write_brep_bin(output_path).expect("Failed to write Binary BRep file");
+                }
             }
             _ => panic!("Unsupported output extension: .{}", ext_str),
         }
