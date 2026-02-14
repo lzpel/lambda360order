@@ -1,0 +1,13 @@
+{
+    "name": "lambda360-spec",
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+        "tsp": "tsp"
+    },
+    "dependencies": {
+        "@typespec/compiler": "latest",
+        "@typespec/http": "latest",
+        "@typespec/openapi3": "latest"
+    }
+}

@@ -5,4 +5,4 @@ run:
 	# No run step for aws
 
 deploy:
-	# No deploy step for aws (requires cdk context)
+	npm run cdk -- deploy

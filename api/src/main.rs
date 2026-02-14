@@ -1,15 +1,32 @@
-use axum::{routing::get, Router};
+mod openapi;
+mod server;
+
+use std::sync::Arc;
+use crate::openapi::{axum_router, print_axum_router};
+use crate::server::Server;
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route("/", get(handler));
-    
-    // AWS Lambda Web Adapter defaults to port 8080.
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
-    println!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
-}
+    let port: u16 = std::env::var("PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse()
+        .expect("PORT should be integer");
 
-async fn handler() -> &'static str {
-    "Hello World"
+    print_axum_router(port);
+
+    let api = Server {};
+    let app = axum_router(api).layer(axum::extract::DefaultBodyLimit::disable());
+
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
+        .await
+        .unwrap();
+
+    println!("Listening on http://0.0.0.0:{}", port);
+
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async {
+            tokio::signal::ctrl_c().await.unwrap();
+        })
+        .await
+        .unwrap();
 }

@@ -1,5 +1,5 @@
 generate:
-	# No generate step for api
+	mandolin -i ../public/openapi.json -o src/openapi.rs
 
 run:
 	cargo run
