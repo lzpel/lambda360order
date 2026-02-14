@@ -1,35 +1,24 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import OrderWidget from './OrderWidget';
+import { BrowserRouter, useRoutes } from 'react-router-dom';
+import routes from '~react-pages';
 
-const DEFAULT_MODEL_URL = 'https://lzpel.github.io/lambda360order/PA-001-DF7.json';
-
-function mount(container: HTMLElement, options?: { modelUrl?: string }) {
-  const modelUrl = options?.modelUrl
-    ?? container.dataset.model
-    ?? DEFAULT_MODEL_URL;
-
-  const root = createRoot(container);
-  root.render(
-    <React.StrictMode>
-      <OrderWidget modelUrl={modelUrl} />
-    </React.StrictMode>
+function App() {
+  const element = useRoutes(routes);
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      {element}
+    </Suspense>
   );
-  return root;
 }
 
-// Auto-mount: find containers with id or data attribute
-(function autoMount() {
-  const container = document.getElementById('lambda360-order');
-  if (container) {
-    mount(container);
-  }
+const container = document.getElementById('root') || document.body.appendChild(document.createElement('div'));
+const root = createRoot(container);
 
-  // Also mount to any element with data-lambda360-order attribute
-  document.querySelectorAll<HTMLElement>('[data-lambda360-order]').forEach(el => {
-    mount(el);
-  });
-})();
-
-// Expose global API for manual mounting
-(window as any).Lambda360Order = { mount };
+root.render(
+  <React.StrictMode>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
+);

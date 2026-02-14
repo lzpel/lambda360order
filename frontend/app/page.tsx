@@ -24,6 +24,9 @@ export default function HomePage() {
         <li>
           <Link href="/insert">Embed/Insert Demo</Link>
         </li>
+        <li>
+          <Link href="/embedded">Integrated Widget (React Component)</Link>
+        </li>
       </ul>
     </main>
   );
