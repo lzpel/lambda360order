@@ -2,6 +2,8 @@ generate:
 	npm install
 	echo "$${tspconfig}" > ./out.yaml
 	npm run tsp -- compile main.tsp --config ./out.yaml
+%:
+	echo "No rule to make target '$@'"
 
 define tspconfig
 emit:

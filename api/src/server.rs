@@ -3,8 +3,29 @@ use opencascade::primitives::Shape;
 use std::path::Path;
 use gltf_json as json;
 use std::io::Write;
+use ngoni
 
-pub struct Server {}
+pub struct Server {
+	bucket_step: ngoni::s3::S3Storage,
+	bucket_memo: ngoni::s3::S3Storage
+}
+
+impl Server {
+	pub async fn new() -> Result<Self, String> {
+		Ok(Self {
+			bucket_step: ngoni::s3::S3Storage::new(
+				&std::env::var("BUCKET_STEP")
+					.unwrap_or("sarodstack-step3a4f7567-qbdbrpfmwtb6".to_string()),
+			)
+			.await,
+			bucket_memo: ngoni::s3::S3Storage::new(
+				&std::env::var("BUCKET_MEMO")
+					.unwrap_or("sarodstack-memo3a4f7567-qbdbrpfmwtb6".to_string()),
+			)
+			.await,
+		})
+	}
+}
 
 impl ApiInterface for Server {
     async fn step_exists(&self, _req: StepExistsRequest) -> StepExistsResponse {
