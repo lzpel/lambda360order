@@ -15,12 +15,12 @@ impl Server {
 		Ok(Self {
 			bucket_step: ngoni::s3::S3Storage::new(
 				&std::env::var("BUCKET_STEP")
-					.unwrap_or("sarodstack-step3a4f7567-qbdbrpfmwtb6".to_string()),
+					.unwrap_or("lambda360order-stepadb8bd0b-xbdpochgzrd7".to_string()),
 			)
 			.await,
 			bucket_memo: ngoni::s3::S3Storage::new(
 				&std::env::var("BUCKET_MEMO")
-					.unwrap_or("sarodstack-memo3a4f7567-qbdbrpfmwtb6".to_string()),
+					.unwrap_or("lambda360order-memo633eea8b-pmmqqwonfeqnl".to_string()),
 			)
 			.await,
 		})
