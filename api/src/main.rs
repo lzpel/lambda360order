@@ -18,7 +18,7 @@ async fn main() {
 
     print_axum_router(port);
 
-    let api = Server {};
+    let api = Server::new().await.unwrap();
     let app = axum_router(api).layer(axum::extract::DefaultBodyLimit::disable());
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))

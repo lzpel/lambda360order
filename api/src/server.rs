@@ -1,30 +1,30 @@
 use crate::openapi::*;
-use opencascade::primitives::Shape;
-use std::path::Path;
 use gltf_json as json;
+use ngoni;
+use opencascade::primitives::Shape;
 use std::io::Write;
-use ngoni
+use std::path::Path;
 
 pub struct Server {
-	bucket_step: ngoni::s3::S3Storage,
-	bucket_memo: ngoni::s3::S3Storage
+    bucket_step: ngoni::s3::S3Storage,
+    bucket_memo: ngoni::s3::S3Storage,
 }
 
 impl Server {
-	pub async fn new() -> Result<Self, String> {
-		Ok(Self {
-			bucket_step: ngoni::s3::S3Storage::new(
-				&std::env::var("BUCKET_STEP")
-					.unwrap_or("lambda360order-stepadb8bd0b-xbdpochgzrd7".to_string()),
-			)
-			.await,
-			bucket_memo: ngoni::s3::S3Storage::new(
-				&std::env::var("BUCKET_MEMO")
-					.unwrap_or("lambda360order-memo633eea8b-pmmqqwonfeqnl".to_string()),
-			)
-			.await,
-		})
-	}
+    pub async fn new() -> Result<Self, String> {
+        Ok(Self {
+            bucket_step: ngoni::s3::S3Storage::new(
+                &std::env::var("BUCKET_STEP")
+                    .unwrap_or("lambda360order-stepadb8bd0b-xbdpochgzrd7".to_string()),
+            )
+            .await,
+            bucket_memo: ngoni::s3::S3Storage::new(
+                &std::env::var("BUCKET_MEMO")
+                    .unwrap_or("lambda360order-memo633eea8b-pmmqqwonfeqnl".to_string()),
+            )
+            .await,
+        })
+    }
 }
 
 impl ApiInterface for Server {
@@ -43,13 +43,13 @@ impl ApiInterface for Server {
     async fn viewer_view(&self, _req: ViewerViewRequest) -> ViewerViewResponse {
         // Currently ignores the specified sha256 and loads public/PA-001-DF7.brep
         let brep_path = Path::new("../public/PA-001-DF7.brep");
-        
+
         if !brep_path.exists() {
             return ViewerViewResponse::Raw(
                 axum::response::Response::builder()
                     .status(axum::http::StatusCode::NOT_FOUND)
                     .body(axum::body::Body::from("BRep file not found"))
-                    .unwrap()
+                    .unwrap(),
             );
         }
 
@@ -62,11 +62,14 @@ impl ApiInterface for Server {
                     return ViewerViewResponse::Raw(
                         axum::response::Response::builder()
                             .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-                            .body(axum::body::Body::from(format!("Failed to read BRep: {:?}", e)))
-                            .unwrap()
+                            .body(axum::body::Body::from(format!(
+                                "Failed to read BRep: {:?}",
+                                e
+                            )))
+                            .unwrap(),
                     );
                 }
-            }
+            },
         };
 
         // Extract mesh
@@ -76,8 +79,11 @@ impl ApiInterface for Server {
                 return ViewerViewResponse::Raw(
                     axum::response::Response::builder()
                         .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(axum::body::Body::from(format!("Failed to mesh shape: {:?}", e)))
-                        .unwrap()
+                        .body(axum::body::Body::from(format!(
+                            "Failed to mesh shape: {:?}",
+                            e
+                        )))
+                        .unwrap(),
                 );
             }
         };
@@ -89,8 +95,11 @@ impl ApiInterface for Server {
                 return ViewerViewResponse::Raw(
                     axum::response::Response::builder()
                         .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(axum::body::Body::from(format!("Failed to create GLB: {}", e)))
-                        .unwrap()
+                        .body(axum::body::Body::from(format!(
+                            "Failed to create GLB: {}",
+                            e
+                        )))
+                        .unwrap(),
                 );
             }
         };
@@ -105,7 +114,11 @@ fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, 
     // De-index the mesh and compute per-face (flat) normals
     // This ensures each triangle has its own vertices with a correct face normal,
     // preventing the "same direction faces with different brightness" issue.
-    let src_verts: Vec<[f32; 3]> = mesh.vertices.iter().map(|v| [v.x as f32, v.y as f32, v.z as f32]).collect();
+    let src_verts: Vec<[f32; 3]> = mesh
+        .vertices
+        .iter()
+        .map(|v| [v.x as f32, v.y as f32, v.z as f32])
+        .collect();
 
     let tri_count = mesh.indices.len() / 3;
     let vert_count = tri_count * 3; // 3 vertices per triangle after de-indexing
@@ -144,8 +157,15 @@ fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, 
     }
 
     // No indices needed - sequential vertex rendering
-    let v_bytes = unsafe { std::slice::from_raw_parts(flat_vertices.as_ptr() as *const u8, flat_vertices.len() * 12) };
-    let n_bytes = unsafe { std::slice::from_raw_parts(flat_normals.as_ptr() as *const u8, flat_normals.len() * 12) };
+    let v_bytes = unsafe {
+        std::slice::from_raw_parts(
+            flat_vertices.as_ptr() as *const u8,
+            flat_vertices.len() * 12,
+        )
+    };
+    let n_bytes = unsafe {
+        std::slice::from_raw_parts(flat_normals.as_ptr() as *const u8, flat_normals.len() * 12)
+    };
 
     let mut buffer = Vec::new();
     buffer.extend_from_slice(v_bytes);
@@ -153,7 +173,9 @@ fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, 
     let v_len = v_bytes.len();
 
     // 4-byte alignment
-    while buffer.len() % 4 != 0 { buffer.push(0); }
+    while buffer.len() % 4 != 0 {
+        buffer.push(0);
+    }
     let n_offset = buffer.len();
     buffer.extend_from_slice(n_bytes);
     let n_len = n_bytes.len();
@@ -203,7 +225,9 @@ fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, 
         buffer_view: Some(json::Index::new(0)),
         byte_offset: Some(json::validation::USize64(0)),
         count: json::validation::USize64(flat_vertices.len() as u64),
-        component_type: Valid(json::accessor::GenericComponentType(json::accessor::ComponentType::F32)),
+        component_type: Valid(json::accessor::GenericComponentType(
+            json::accessor::ComponentType::F32,
+        )),
         extensions: None,
         extras: Default::default(),
         type_: Valid(json::accessor::Type::Vec3),
@@ -229,7 +253,9 @@ fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, 
         buffer_view: Some(json::Index::new(1)),
         byte_offset: Some(json::validation::USize64(0)),
         count: json::validation::USize64(flat_normals.len() as u64),
-        component_type: Valid(json::accessor::GenericComponentType(json::accessor::ComponentType::F32)),
+        component_type: Valid(json::accessor::GenericComponentType(
+            json::accessor::ComponentType::F32,
+        )),
         extensions: None,
         extras: Default::default(),
         type_: Valid(json::accessor::Type::Vec3),
@@ -268,8 +294,9 @@ fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, 
     let node_extras: json::extras::Extras = if !edge_data.is_empty() {
         let edges_json = serde_json::json!({ "edges": edge_data });
         let raw = serde_json::value::RawValue::from_string(
-            serde_json::to_string(&edges_json).map_err(|e| e.to_string())?
-        ).map_err(|e| e.to_string())?;
+            serde_json::to_string(&edges_json).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
         Some(raw)
     } else {
         None
@@ -293,18 +320,21 @@ fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, 
     // Serialize JSON
     let json_string = json::serialize::to_string(&root).map_err(|e| e.to_string())?;
     let mut json_bytes = json_string.into_bytes();
-    while json_bytes.len() % 4 != 0 { json_bytes.push(b' '); }
+    while json_bytes.len() % 4 != 0 {
+        json_bytes.push(b' ');
+    }
 
     // GLB Header
     let mut glb = Vec::new();
     glb.write_all(b"glTF").unwrap();
     glb.write_all(&2u32.to_le_bytes()).unwrap(); // Version 2
-    
+
     let total_size = 12 + 8 + json_bytes.len() + 8 + buffer.len();
     glb.write_all(&(total_size as u32).to_le_bytes()).unwrap();
 
     // JSON Chunk
-    glb.write_all(&(json_bytes.len() as u32).to_le_bytes()).unwrap();
+    glb.write_all(&(json_bytes.len() as u32).to_le_bytes())
+        .unwrap();
     glb.write_all(b"JSON").unwrap();
     glb.write_all(&json_bytes).unwrap();
 

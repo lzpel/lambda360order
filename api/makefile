@@ -1,6 +1,5 @@
 generate:
-	# github pagesにはmandolinは無いので放置
-	mandolin -h && mandolin -i ../public/openapi.json -o src/openapi.rs || echo "mandolin not found"
+	cargo run --example generate
 
 run:
 	cargo run
