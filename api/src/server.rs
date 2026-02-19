@@ -29,7 +29,7 @@ impl Server {
 
 impl ApiInterface for Server {
     async fn step_exists(&self, _req: StepExistsRequest) -> StepExistsResponse {
-        StepExistsResponse::Status200(PathsStepSha256GetResponses200ContentApplicationJsonSchema {
+        StepExistsResponse::Status200(FileExists {
             exists: true,
             uploadUrl: None,
             expiresAt: None,

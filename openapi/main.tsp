@@ -1,5 +1,6 @@
 import "@typespec/http";
 import "@typespec/openapi3";
+import "./lib.js";
 
 using TypeSpec.Http;
 
@@ -53,6 +54,7 @@ union NumberOrExpr {
  * op の取り得る値:
  * step, union, intersect, subtract, scale, translate, rotate, stretch
  */
+@discriminatorDefault("step")
 @discriminator("op")
 model ShapeNode {
   `op`: string;
