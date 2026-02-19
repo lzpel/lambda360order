@@ -43,9 +43,10 @@
 
 
 
-// This file was automatically generated from OpenAPI specification by mandolin https://github.com/lzpel/mandolin
 
-/* Cargo.toml to build this server
+// このファイルはmandolin https://github.com/lzpel/mandolin によりOpenAPI仕様から自動生成されました
+
+/* このサーバをビルドするためのCargo.toml
 
 [dependencies]
 serde= { version="*", features = ["derive"] }
@@ -61,10 +62,10 @@ use std::collections::HashMap;
 use serde;
 use std::future::Future;
 
-/// API Interface Trait
-/// Define server logic by implementing methods corresponding to each operation
+/// APIインターフェーストレイト
+/// 各オペレーションに対応するメソッドを実装することでサーバロジックを定義する
 pub trait ApiInterface{
-	/// Authentication process: Generate AuthContext from request
+	/// 認証処理: リクエストからAuthContextを生成する
 	fn authorize(&self, _req: axum::http::Request<axum::body::Body>) -> impl Future<Output = Result<AuthContext, String>> + Send{async { Ok(Default::default()) } }
 	// GET /hello
 	fn hello_say_hello(&self, _req: HelloSayHelloRequest) -> impl Future<Output = HelloSayHelloResponse> + Send{async{Default::default()}}
@@ -77,16 +78,16 @@ pub trait ApiInterface{
 }
 
 
-/// Auth Context: Struct to hold authentication information
+/// 認証コンテキスト: 認証情報を保持する構造体
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
 pub struct AuthContext{
-    pub subject: String,   // User identifier (e.g., "auth0|123", "google-oauth2|456")
-    pub subject_id: u128,  // UUID compatible numeric ID
-    pub scopes: Vec<String>, // Scopes (e.g., "read:foo", "write:bar")
+    pub subject: String,   // ユーザー識別子 (例: "auth0|123", "google-oauth2|456")
+    pub subject_id: u128,  // UUID互換の数値ID
+    pub scopes: Vec<String>, // スコープ (例: "read:foo", "write:bar")
 }
 
 
-// Request type for hello_say_hello
+// hello_say_helloのリクエスト型
 #[derive(Debug)]
 pub struct HelloSayHelloRequest{
 	pub request: axum::http::Request<axum::body::Body>,
@@ -94,38 +95,38 @@ pub struct HelloSayHelloRequest{
 impl AsRef<axum::http::Request<axum::body::Body>> for HelloSayHelloRequest{
 	fn as_ref(&self) -> &axum::http::Request<axum::body::Body>{&self.request}
 }
-// Response type for hello_say_hello
+// hello_say_helloのレスポンス型
 #[derive(Debug)]
 pub enum HelloSayHelloResponse{
 	Status200(String),
-	Raw(axum::response::Response),// Variant for custom responses
+	Raw(axum::response::Response),// カスタムレスポンス用バリアント
 }
 impl Default for HelloSayHelloResponse{
 	fn default() -> Self{
 		Self::Status200(Default::default())
 	}
 }
-// Request type for shape_compute
+// shape_computeのリクエスト型
 #[derive(Debug)]
 pub struct ShapeComputeRequest{
-	pub body: Box<ShapeNode>,
+	pub body: PathsShapePostRequestBodyContentApplicationJsonSchema,
 	pub request: axum::http::Request<axum::body::Body>,
 }
 impl AsRef<axum::http::Request<axum::body::Body>> for ShapeComputeRequest{
 	fn as_ref(&self) -> &axum::http::Request<axum::body::Body>{&self.request}
 }
-// Response type for shape_compute
+// shape_computeのレスポンス型
 #[derive(Debug)]
 pub enum ShapeComputeResponse{
 	Status200(Vec<u8>),
-	Raw(axum::response::Response),// Variant for custom responses
+	Raw(axum::response::Response),// カスタムレスポンス用バリアント
 }
 impl Default for ShapeComputeResponse{
 	fn default() -> Self{
 		Self::Status200(Default::default())
 	}
 }
-// Request type for step_exists
+// step_existsのリクエスト型
 #[derive(Debug)]
 pub struct StepExistsRequest{
 	pub sha256:String,
@@ -134,18 +135,18 @@ pub struct StepExistsRequest{
 impl AsRef<axum::http::Request<axum::body::Body>> for StepExistsRequest{
 	fn as_ref(&self) -> &axum::http::Request<axum::body::Body>{&self.request}
 }
-// Response type for step_exists
+// step_existsのレスポンス型
 #[derive(Debug)]
 pub enum StepExistsResponse{
-	Status200(FileExists),
-	Raw(axum::response::Response),// Variant for custom responses
+	Status200(PathsStepSha256GetResponses200ContentApplicationJsonSchema),
+	Raw(axum::response::Response),// カスタムレスポンス用バリアント
 }
 impl Default for StepExistsResponse{
 	fn default() -> Self{
 		Self::Status200(Default::default())
 	}
 }
-// Request type for viewer_view
+// viewer_viewのリクエスト型
 #[derive(Debug)]
 pub struct ViewerViewRequest{
 	pub sha256:String,
@@ -154,11 +155,11 @@ pub struct ViewerViewRequest{
 impl AsRef<axum::http::Request<axum::body::Body>> for ViewerViewRequest{
 	fn as_ref(&self) -> &axum::http::Request<axum::body::Body>{&self.request}
 }
-// Response type for viewer_view
+// viewer_viewのレスポンス型
 #[derive(Debug)]
 pub enum ViewerViewResponse{
 	Status200(Vec<u8>),
-	Raw(axum::response::Response),// Variant for custom responses
+	Raw(axum::response::Response),// カスタムレスポンス用バリアント
 }
 impl Default for ViewerViewResponse{
 	fn default() -> Self{
@@ -168,141 +169,21 @@ impl Default for ViewerViewResponse{
 
 
 
-
-
 #[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct FileExists{
+pub struct PathsShapePostRequestBodyContentApplicationJsonSchema{
+	pub r#op:String,
+}
+#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
+pub struct PathsStepSha256GetResponses200ContentApplicationJsonSchema{
 	pub r#exists:bool,
 	pub r#expiresAt:Option<chrono::DateTime<chrono::Utc>>,
 	pub r#uploadUrl:Option<String>,
 }
 
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct IntersectNode{
-	pub r#a:Box<ShapeNode>,
-	pub r#b:Box<ShapeNode>,
-	pub r#op:String,
-}
-
-#[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
-#[serde(untagged)]
-pub enum NumberOrExpr{
-	Variant0(f64),
-	Variant1(String),
-}
-impl Default for NumberOrExpr{fn default()->Self{Self::Variant0(Default::default())}}
-
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct RotateNode{
-	pub r#axis:Vec<NumberOrExpr>,
-	pub r#deg:NumberOrExpr,
-	pub r#op:String,
-	pub r#shape:Box<ShapeNode>,
-}
-
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct ScaleNode{
-	pub r#factor:NumberOrExpr,
-	pub r#op:String,
-	pub r#shape:Box<ShapeNode>,
-}
-
-#[derive(Clone,Debug,serde::Serialize,serde::Deserialize)]
-#[serde(tag="op")]
-pub enum ShapeNode{
-	#[serde(rename="intersect")]
-	Intersect{
-		r#a:Box<ShapeNode>,
-		r#b:Box<ShapeNode>,
-	},
-	#[serde(rename="rotate")]
-	Rotate{
-		r#axis:Vec<NumberOrExpr>,
-		r#deg:NumberOrExpr,
-		r#shape:Box<ShapeNode>,
-	},
-	#[serde(rename="scale")]
-	Scale{
-		r#factor:NumberOrExpr,
-		r#shape:Box<ShapeNode>,
-	},
-	#[serde(rename="step")]
-	Step{
-		r#content_hash:Option<String>,
-		r#path:String,
-	},
-	#[serde(rename="stretch")]
-	Stretch{
-		r#cut:Vec<NumberOrExpr>,
-		r#delta:Vec<NumberOrExpr>,
-		r#shape:Box<ShapeNode>,
-	},
-	#[serde(rename="subtract")]
-	Subtract{
-		r#a:Box<ShapeNode>,
-		r#b:Box<ShapeNode>,
-	},
-	#[serde(rename="translate")]
-	Translate{
-		r#shape:Box<ShapeNode>,
-		r#xyz:Vec<NumberOrExpr>,
-	},
-	#[serde(rename="union")]
-	Union{
-		r#a:Box<ShapeNode>,
-		r#b:Box<ShapeNode>,
-	},
-}
-impl Default for ShapeNode{fn default()->Self{
-	Self::Step{
-		r#content_hash:Default::default(),
-		r#path:Default::default(),
-	}
-}}
-
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct StepNode{
-	pub r#content_hash:Option<String>,
-	pub r#op:String,
-	pub r#path:String,
-}
-
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct StretchNode{
-	pub r#cut:Vec<NumberOrExpr>,
-	pub r#delta:Vec<NumberOrExpr>,
-	pub r#op:String,
-	pub r#shape:Box<ShapeNode>,
-}
-
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct SubtractNode{
-	pub r#a:Box<ShapeNode>,
-	pub r#b:Box<ShapeNode>,
-	pub r#op:String,
-}
-
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct TranslateNode{
-	pub r#op:String,
-	pub r#shape:Box<ShapeNode>,
-	pub r#xyz:Vec<NumberOrExpr>,
-}
-
-#[derive(Default,Clone,Debug,serde::Serialize,serde::Deserialize)]
-pub struct UnionShapeNode{
-	pub r#a:Box<ShapeNode>,
-	pub r#b:Box<ShapeNode>,
-	pub r#op:String,
-}
-
-
-
-
 use axum;
 use axum::extract::FromRequest;
 
-/// Helper function to generate text responses
+/// テキストレスポンスを生成するヘルパー関数
 fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Response{
 	axum::response::Response::builder()
 		.status(code)
@@ -311,7 +192,7 @@ fn text_response(code: axum::http::StatusCode, body: String)->axum::response::Re
 		.unwrap()
 }
 
-/// Returns axum::Router with root handlers for all operations registered
+/// 全オペレーションのルートハンドラを登録したaxum::Routerを返す
 pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance :std::sync::Arc<S>)->axum::Router{
 	let router = axum::Router::new();
 	let i = instance.clone();
@@ -323,13 +204,13 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 		| async move{
 			let (parts, body) = request.into_parts();
 			let ret=S::hello_say_hello(i.as_ref(), HelloSayHelloRequest{
-			request: axum::http::Request::from_parts(parts.clone(), Default::default()),
-		}).await;
-		match ret{
-			HelloSayHelloResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
-			HelloSayHelloResponse::Raw(v)=>v,
-		}
-	}));
+				request: axum::http::Request::from_parts(parts.clone(), Default::default()),
+			}).await;
+			match ret{
+				HelloSayHelloResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "text/plain").body(axum::body::Body::from(v)).unwrap(),
+				HelloSayHelloResponse::Raw(v)=>v,
+			}
+		}));
 	let i = instance.clone();
 	let router = router.route("/shape", axum::routing::post(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -339,14 +220,14 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 		| async move{
 			let (parts, body) = request.into_parts();
 			let ret=S::shape_compute(i.as_ref(), ShapeComputeRequest{
-			body:match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(axum::http::StatusCode::BAD_REQUEST, v)},
-			request: axum::http::Request::from_parts(parts.clone(), Default::default()),
-		}).await;
-		match ret{
-			ShapeComputeResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "model/gltf-binary").body(axum::body::Body::from(v)).unwrap(),
-			ShapeComputeResponse::Raw(v)=>v,
-		}
-	}));
+				body:match axum::body::to_bytes(body, usize::MAX).await.map_err(|v| format!("{v:?}")).and_then(|v| serde_json::from_slice(&v).map_err(|v| v.to_string())) {Ok(v)=>v,Err(v)=>return text_response(axum::http::StatusCode::BAD_REQUEST, v)},
+				request: axum::http::Request::from_parts(parts.clone(), Default::default()),
+			}).await;
+			match ret{
+				ShapeComputeResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "model/gltf-binary").body(axum::body::Body::from(v)).unwrap(),
+				ShapeComputeResponse::Raw(v)=>v,
+			}
+		}));
 	let i = instance.clone();
 	let router = router.route("/step/{sha256}", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -356,14 +237,14 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 		| async move{
 			let (parts, body) = request.into_parts();
 			let ret=S::step_exists(i.as_ref(), StepExistsRequest{
-			r#sha256:{let v=path.get("sha256").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(axum::http::StatusCode::from_u16(400).unwrap(), format!("parse error: sha256 in path={:?}", path))}},
-			request: axum::http::Request::from_parts(parts.clone(), Default::default()),
-		}).await;
-		match ret{
-			StepExistsResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
-			StepExistsResponse::Raw(v)=>v,
-		}
-	}));
+				r#sha256:{let v=path.get("sha256").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(axum::http::StatusCode::from_u16(400).unwrap(), format!("parse error: sha256 in path={:?}", path))}},
+				request: axum::http::Request::from_parts(parts.clone(), Default::default()),
+			}).await;
+			match ret{
+				StepExistsResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "application/json").body(axum::body::Body::from(serde_json::to_vec_pretty(&v).expect("error serialize response json"))).unwrap(),
+				StepExistsResponse::Raw(v)=>v,
+			}
+		}));
 	let i = instance.clone();
 	let router = router.route("/view", axum::routing::get(|
 			path: axum::extract::Path<HashMap<String,String>>,
@@ -373,16 +254,16 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 		| async move{
 			let (parts, body) = request.into_parts();
 			let ret=S::viewer_view(i.as_ref(), ViewerViewRequest{
-			r#sha256:{let v=query.get("sha256").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(axum::http::StatusCode::from_u16(400).unwrap(), format!("parse error: sha256 in query={:?}", query))}},
-			request: axum::http::Request::from_parts(parts.clone(), Default::default()),
-		}).await;
-		match ret{
-			ViewerViewResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "model/gltf-binary").body(axum::body::Body::from(v)).unwrap(),
-			ViewerViewResponse::Raw(v)=>v,
-		}
-	}));
+				r#sha256:{let v=query.get("sha256").and_then(|v| v.parse().ok());match v {Some(v)=>v, None=>return text_response(axum::http::StatusCode::from_u16(400).unwrap(), format!("parse error: sha256 in query={:?}", query))}},
+				request: axum::http::Request::from_parts(parts.clone(), Default::default()),
+			}).await;
+			match ret{
+				ViewerViewResponse::Status200(v)=> axum::response::Response::builder().status(axum::http::StatusCode::from_u16(200).unwrap()).header(axum::http::header::CONTENT_TYPE, "model/gltf-binary").body(axum::body::Body::from(v)).unwrap(),
+				ViewerViewResponse::Raw(v)=>v,
+			}
+		}));
 	let router = router.route("/openapi.json", axum::routing::get(|| async move{
-			r###"{"components":{"schemas":{"FileExists":{"properties":{"exists":{"type":"boolean"},"expiresAt":{"format":"date-time","type":"string"},"uploadUrl":{"type":"string"}},"required":["exists"],"type":"object"},"IntersectNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNode"}],"description":"ブーリアン共通部分 (BRepAlgoAPI_Common)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["intersect"],"type":"string"}},"required":["op","a","b"],"type":"object"},"NumberOrExpr":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"RotateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNode"}],"description":"回転","properties":{"axis":{"description":"回転軸ベクトル [ax, ay, az]","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"deg":{"allOf":[{"$ref":"#/components/schemas/NumberOrExpr"}],"description":"回転角度 (度)"},"op":{"enum":["rotate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","axis","deg"],"type":"object"},"ScaleNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNode"}],"description":"一様拡大縮小","properties":{"factor":{"$ref":"#/components/schemas/NumberOrExpr"},"op":{"enum":["scale"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","factor"],"type":"object"},"ShapeNode":{"description":"形状演算ノードの基底モデル。`op` フィールドで種別を識別する。\n\nop の取り得る値:\nstep, union, intersect, subtract, scale, translate, rotate, stretch","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op","x-default":"step"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"StepNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNode"}],"description":"STEPファイルの読み込み","properties":{"content_hash":{"description":"キャッシュ無効化用コンテンツハッシュ \"sha256:\u003chex64\u003e\"","type":"string"},"op":{"enum":["step"],"type":"string"},"path":{"description":"STEPファイルのパス (S3キー等)","type":"string"}},"required":["op","path"],"type":"object"},"StretchNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNode"}],"description":"伸縮: 切断面で形状を分割して指定方向に伸ばす","properties":{"cut":{"description":"切断面の座標 [cx, cy, cz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"delta":{"description":"各軸方向の伸縮量 [dx, dy, dz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"op":{"enum":["stretch"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","cut","delta"],"type":"object"},"SubtractNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNode"}],"description":"ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["subtract"],"type":"string"}},"required":["op","a","b"],"type":"object"},"TranslateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNode"}],"description":"平行移動","properties":{"op":{"enum":["translate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"},"xyz":{"description":"移動量 [x, y, z] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"}},"required":["op","shape","xyz"],"type":"object"},"UnionShapeNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNode"}],"description":"ブーリアン合体 (BRepAlgoAPI_Fuse)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["union"],"type":"string"}},"required":["op","a","b"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/hello":{"get":{"operationId":"Hello_sayHello","responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}},"/shape":{"post":{"description":"ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す","operationId":"Shape_compute","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ShapeNode"}}},"required":true},"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}},"/step/{sha256}":{"get":{"operationId":"Step_exists","parameters":[{"in":"path","name":"sha256","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/FileExists"}}},"description":"The request has succeeded."}}}},"/view":{"get":{"operationId":"Viewer_view","parameters":[{"explode":false,"in":"query","name":"sha256","required":true,"schema":{"type":"string"},"style":"form"}],"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"/api","variables":{}}]}"###
+			r###"{"components":{"schemas":{"FileExists":{"properties":{"exists":{"type":"boolean"},"expiresAt":{"format":"date-time","type":"string"},"uploadUrl":{"type":"string"}},"required":["exists"],"type":"object"},"IntersectNode":{"allOf":[{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}],"description":"ブーリアン共通部分 (BRepAlgoAPI_Common)","properties":{"a":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"b":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"op":{"enum":["intersect"],"type":"string"}},"required":["op","a","b"],"type":"object"},"NumberOrExpr":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"RotateNode":{"allOf":[{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}],"description":"回転","properties":{"axis":{"description":"回転軸ベクトル [ax, ay, az]","items":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"type":"array"},"deg":{"allOf":[{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"}],"description":"回転角度 (度)"},"op":{"enum":["rotate"],"type":"string"},"shape":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}},"required":["op","shape","axis","deg"],"type":"object"},"ScaleNode":{"allOf":[{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}],"description":"一様拡大縮小","properties":{"factor":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"op":{"enum":["scale"],"type":"string"},"shape":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}},"required":["op","shape","factor"],"type":"object"},"ShapeNode":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"StepNode":{"allOf":[{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}],"description":"STEPファイルの読み込み","properties":{"content_hash":{"description":"キャッシュ無効化用コンテンツハッシュ \"sha256:\u003chex64\u003e\"","type":"string"},"op":{"enum":["step"],"type":"string"},"path":{"description":"STEPファイルのパス (S3キー等)","type":"string"}},"required":["op","path"],"type":"object"},"StretchNode":{"allOf":[{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}],"description":"伸縮: 切断面で形状を分割して指定方向に伸ばす","properties":{"cut":{"description":"切断面の座標 [cx, cy, cz] (mm)","items":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"type":"array"},"delta":{"description":"各軸方向の伸縮量 [dx, dy, dz] (mm)","items":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"type":"array"},"op":{"enum":["stretch"],"type":"string"},"shape":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}},"required":["op","shape","cut","delta"],"type":"object"},"SubtractNode":{"allOf":[{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}],"description":"ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)","properties":{"a":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"b":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"op":{"enum":["subtract"],"type":"string"}},"required":["op","a","b"],"type":"object"},"TranslateNode":{"allOf":[{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}],"description":"平行移動","properties":{"op":{"enum":["translate"],"type":"string"},"shape":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"xyz":{"description":"移動量 [x, y, z] (mm)","items":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"type":"array"}},"required":["op","shape","xyz"],"type":"object"},"UnionShapeNode":{"allOf":[{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}],"description":"ブーリアン合体 (BRepAlgoAPI_Fuse)","properties":{"a":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"b":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"op":{"enum":["union"],"type":"string"}},"required":["op","a","b"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/hello":{"get":{"operationId":"Hello_sayHello","responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}},"/shape":{"post":{"description":"ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す","operationId":"Shape_compute","requestBody":{"content":{"application/json":{"schema":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","discriminator":{"mapping":{"intersect":"#/components/schemas/IntersectNode","rotate":"#/components/schemas/RotateNode","scale":"#/components/schemas/ScaleNode","step":"#/components/schemas/StepNode","stretch":"#/components/schemas/StretchNode","subtract":"#/components/schemas/SubtractNode","translate":"#/components/schemas/TranslateNode","union":"#/components/schemas/UnionShapeNode"},"propertyName":"op"},"properties":{"op":{"type":"string"}},"required":["op"],"type":"object"}}},"required":true},"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}},"/step/{sha256}":{"get":{"operationId":"Step_exists","parameters":[{"in":"path","name":"sha256","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"properties":{"exists":{"type":"boolean"},"expiresAt":{"format":"date-time","type":"string"},"uploadUrl":{"type":"string"}},"required":["exists"],"type":"object"}}},"description":"The request has succeeded."}}}},"/view":{"get":{"operationId":"Viewer_view","parameters":[{"explode":false,"in":"query","name":"sha256","required":true,"schema":{"type":"string"},"style":"form"}],"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"/api","variables":{}}]}"###
 		}))
 		.route("/ui", axum::routing::get(|| async move{
 			axum::response::Html(r###"
@@ -412,7 +293,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(instance 
 	return router;
 }
 
-/// Mount the router to the server's URL prefix with nest_service
+/// サーバのURLプレフィックスにnest_serviceでルーターをマウントする
 pub fn axum_router<S: ApiInterface + Sync + Send + 'static>(instance: S)->axum::Router{
 	let instance_arc=std::sync::Arc::new(instance);
 	let mut router = axum::Router::new();
@@ -420,15 +301,15 @@ pub fn axum_router<S: ApiInterface + Sync + Send + 'static>(instance: S)->axum::
 	router
 }
 
-/// Display the server URL list to standard output
+/// サーバのURL一覧を標準出力に表示する
 pub fn print_axum_router(port:u16){
 	println!("http://localhost:{}/api/ui", port);
 }
 
-/// Test server implementation (all methods return default values)
+/// テスト用のサーバ実装（全メソッドがデフォルト値を返す）
 pub struct TestServer{}
 impl ApiInterface for TestServer{
-	// Implement required methods here
+	// 必要なメソッドをここに実装する
 	// GET /hello
 	// async fn hello_say_hello(&self, _req: HelloSayHelloRequest) -> HelloSayHelloResponse{Default::default()}
 	// POST /shape
@@ -439,8 +320,8 @@ impl ApiInterface for TestServer{
 	// async fn viewer_view(&self, _req: ViewerViewRequest) -> ViewerViewResponse{Default::default()}
 }
 
-/// Estimates the origin URL (scheme://host) from an HTTP request
-/// Priority: Forwarded > X-Forwarded-* > Host
+/// HTTPリクエストからオリジンURL(scheme://host)を推定する
+/// Forwarded > X-Forwarded-* > Host の優先順位で判定する
 pub fn origin_from_request<B>(req: &axum::http::Request<B>) -> Option<String> {
 	fn first_csv(s: &str) -> &str {
 		s.split(',').next().unwrap_or(s).trim()
@@ -474,7 +355,7 @@ pub fn origin_from_request<B>(req: &axum::http::Request<B>) -> Option<String> {
 
 	let headers = req.headers();
 
-	// 0) Check URI authority (for absolute URIs)
+	// 0) URIのauthority部分を確認（絶対URIが渡された場合）
 	if let Some(auth) = req.uri().authority() {
 		let host = auth.as_str().to_string();
 		return Some(mk_origin(None, host));
@@ -535,7 +416,7 @@ pub fn origin_from_request<B>(req: &axum::http::Request<B>) -> Option<String> {
 		return Some(mk_origin(proto, host));
 	}
 
-	// 3) Fallback to Host header
+	// 3) Hostヘッダにフォールバック
 	let host = headers
 		.get(axum::http::header::HOST)
 		.and_then(|h| h.to_str().ok())
