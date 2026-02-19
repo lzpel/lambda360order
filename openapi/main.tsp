@@ -1,6 +1,5 @@
 import "@typespec/http";
 import "@typespec/openapi3";
-import "./lib.js";
 
 using TypeSpec.Http;
 
