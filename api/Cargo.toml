@@ -13,9 +13,9 @@ opencascade = { git = "https://github.com/lzpel/opencascade-rs", version = "0.2.
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 tokio = { version = "1.49.0", features = ["full"] }
-ngoni = "^0.1.0"
+ngoni = "^0.1.6"
 
 [dev-dependencies]
-mandolin = "0.4.0-alpha.2"
+mandolin = "0.4.0-alpha.5"
 openapiv3 = "2.2"
 serde_json = "1.0"
