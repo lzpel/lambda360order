@@ -6,24 +6,6 @@
   },
   "tags": [],
   "paths": {
-    "/hello": {
-      "get": {
-        "operationId": "Hello_sayHello",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/shape": {
       "post": {
         "operationId": "Shape_compute",

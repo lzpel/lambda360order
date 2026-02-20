@@ -9,12 +9,6 @@ using TypeSpec.Http;
 @server("/api", "Main server")
 namespace Lambda360;
 
-@route("/hello")
-namespace Hello {
-  @get
-  op sayHello(): string;
-}
-
 model FileExists {
   exists: boolean;
   uploadUrl?: string;
