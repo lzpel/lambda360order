@@ -138,124 +138,113 @@ fn shape(node: &ShapeNode, breps: &HashMap<String, Vec<u8>>) -> Result<Vec<u8>, 
 	}
 }
 
-/// GLB (GLTF Binary) を生成する。フラット法線 + エッジデータ付き。
+/// GLB (GLTF Binary) を生成する。OCCのインデックス付きメッシュをそのまま使用。
 pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, String> {
 	use json::validation::Checked::Valid;
 
-	// De-index the mesh and compute per-face (flat) normals
-	let src_verts: Vec<[f32; 3]> = mesh
+	// OCCのメッシュデータをf32に変換
+	let positions: Vec<[f32; 3]> = mesh
 		.vertices
 		.iter()
 		.map(|v| [v.x as f32, v.y as f32, v.z as f32])
 		.collect();
+	let normals: Vec<[f32; 3]> = mesh
+		.normals
+		.iter()
+		.map(|n| [n.x as f32, n.y as f32, n.z as f32])
+		.collect();
 
-	let tri_count = mesh.indices.len() / 3;
-	let vert_count = tri_count * 3;
-
-	let mut flat_vertices: Vec<[f32; 3]> = Vec::with_capacity(vert_count);
-	let mut flat_normals: Vec<[f32; 3]> = Vec::with_capacity(vert_count);
-
-	for tri in 0..tri_count {
-		let i0 = mesh.indices[tri * 3] as usize;
-		let i1 = mesh.indices[tri * 3 + 1] as usize;
-		let i2 = mesh.indices[tri * 3 + 2] as usize;
-
-		let v0 = src_verts[i0];
-		let v1 = src_verts[i1];
-		let v2 = src_verts[i2];
-
-		let edge1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]];
-		let edge2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]];
-		let nx = edge1[1] * edge2[2] - edge1[2] * edge2[1];
-		let ny = edge1[2] * edge2[0] - edge1[0] * edge2[2];
-		let nz = edge1[0] * edge2[1] - edge1[1] * edge2[0];
-		let len = (nx * nx + ny * ny + nz * nz).sqrt();
-		let normal = if len > 1e-10 {
-			[nx / len, ny / len, nz / len]
-		} else {
-			[0.0, 1.0, 0.0]
-		};
-
-		flat_vertices.push(v0);
-		flat_vertices.push(v1);
-		flat_vertices.push(v2);
-		flat_normals.push(normal);
-		flat_normals.push(normal);
-		flat_normals.push(normal);
+	// POSITIONのmin/maxを計算（glTF spec必須）
+	let mut pos_min = [f32::INFINITY; 3];
+	let mut pos_max = [f32::NEG_INFINITY; 3];
+	for p in &positions {
+		for i in 0..3 {
+			pos_min[i] = pos_min[i].min(p[i]);
+			pos_max[i] = pos_max[i].max(p[i]);
+		}
 	}
 
-	let v_bytes = unsafe {
-		std::slice::from_raw_parts(
-			flat_vertices.as_ptr() as *const u8,
-			flat_vertices.len() * 12,
-		)
+	// indicesをu32に変換（usizeは64bit環境で8バイト、頂点数がu16上限を超える可能性もある）
+	let indices_u32: Vec<u32> = mesh.indices.iter().map(|&i| i as u32).collect();
+
+	// バイナリバッファ: indices | pad | positions | normals
+	let idx_bytes = unsafe {
+		std::slice::from_raw_parts(indices_u32.as_ptr() as *const u8, indices_u32.len() * 4)
 	};
-	let n_bytes = unsafe {
-		std::slice::from_raw_parts(flat_normals.as_ptr() as *const u8, flat_normals.len() * 12)
+	let pos_bytes = unsafe {
+		std::slice::from_raw_parts(positions.as_ptr() as *const u8, positions.len() * 12)
 	};
+	let nrm_bytes =
+		unsafe { std::slice::from_raw_parts(normals.as_ptr() as *const u8, normals.len() * 12) };
 
 	let mut buffer = Vec::new();
-	buffer.extend_from_slice(v_bytes);
-	let v_offset = 0;
-	let v_len = v_bytes.len();
-
+	let idx_offset = 0;
+	buffer.extend_from_slice(idx_bytes);
+	let idx_len = idx_bytes.len();
 	while buffer.len() % 4 != 0 {
 		buffer.push(0);
 	}
-	let n_offset = buffer.len();
-	buffer.extend_from_slice(n_bytes);
-	let n_len = n_bytes.len();
+	let pos_offset = buffer.len();
+	buffer.extend_from_slice(pos_bytes);
+	let pos_len = pos_bytes.len();
+	let nrm_offset = buffer.len();
+	buffer.extend_from_slice(nrm_bytes);
+	let nrm_len = nrm_bytes.len();
 
-	let buffer_total_len = buffer.len();
-
-	// Extract edges from shape
+	// エッジデータ
 	let mut edge_data: Vec<f32> = Vec::new();
 	for edge in shape.edges() {
 		let segments: Vec<_> = edge.approximation_segments().collect();
-		if segments.len() < 2 {
-			continue;
-		}
-		for i in 0..segments.len() - 1 {
-			let start = segments[i];
-			let end = segments[i + 1];
-			edge_data.push(start.x as f32);
-			edge_data.push(start.y as f32);
-			edge_data.push(start.z as f32);
-			edge_data.push(end.x as f32);
-			edge_data.push(end.y as f32);
-			edge_data.push(end.z as f32);
+		for w in segments.windows(2) {
+			edge_data.extend_from_slice(&[
+				w[0].x as f32,
+				w[0].y as f32,
+				w[0].z as f32,
+				w[1].x as f32,
+				w[1].y as f32,
+				w[1].z as f32,
+			]);
 		}
 	}
 
+	// エッジデータをBIN chunkに追加（JSON extrasに入れるとJSONが膨大になるため）
+	let edge_bytes =
+		unsafe { std::slice::from_raw_parts(edge_data.as_ptr() as *const u8, edge_data.len() * 4) };
+	let edge_offset = buffer.len();
+	buffer.extend_from_slice(edge_bytes);
+	let edge_len = edge_bytes.len();
+
+	// glTF JSON構築
 	let mut root = json::Root::default();
 	root.buffers.push(json::Buffer {
-		byte_length: json::validation::USize64(buffer_total_len as u64),
+		byte_length: json::validation::USize64(buffer.len() as u64),
 		name: None,
 		uri: None,
 		extensions: None,
 		extras: Default::default(),
 	});
 
+	// BufferView / Accessor: indices (ELEMENT_ARRAY_BUFFER, U16, SCALAR)
 	root.buffer_views.push(json::buffer::View {
 		buffer: json::Index::new(0),
-		byte_length: json::validation::USize64(v_len as u64),
-		byte_offset: Some(json::validation::USize64(v_offset as u64)),
+		byte_length: json::validation::USize64(idx_len as u64),
+		byte_offset: Some(json::validation::USize64(idx_offset as u64)),
 		byte_stride: None,
 		name: None,
-		target: Some(Valid(json::buffer::Target::ArrayBuffer)),
+		target: Some(Valid(json::buffer::Target::ElementArrayBuffer)),
 		extensions: None,
 		extras: Default::default(),
 	});
 	root.accessors.push(json::Accessor {
 		buffer_view: Some(json::Index::new(0)),
 		byte_offset: Some(json::validation::USize64(0)),
-		count: json::validation::USize64(flat_vertices.len() as u64),
+		count: json::validation::USize64(indices_u32.len() as u64),
 		component_type: Valid(json::accessor::GenericComponentType(
-			json::accessor::ComponentType::F32,
+			json::accessor::ComponentType::U32,
 		)),
+		type_: Valid(json::accessor::Type::Scalar),
 		extensions: None,
 		extras: Default::default(),
-		type_: Valid(json::accessor::Type::Vec3),
 		min: None,
 		max: None,
 		name: None,
@@ -263,10 +252,11 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 		sparse: None,
 	});
 
+	// BufferView / Accessor: positions (ARRAY_BUFFER, F32, VEC3)
 	root.buffer_views.push(json::buffer::View {
 		buffer: json::Index::new(0),
-		byte_length: json::validation::USize64(n_len as u64),
-		byte_offset: Some(json::validation::USize64(n_offset as u64)),
+		byte_length: json::validation::USize64(pos_len as u64),
+		byte_offset: Some(json::validation::USize64(pos_offset as u64)),
 		byte_stride: None,
 		name: None,
 		target: Some(Valid(json::buffer::Target::ArrayBuffer)),
@@ -276,13 +266,41 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 	root.accessors.push(json::Accessor {
 		buffer_view: Some(json::Index::new(1)),
 		byte_offset: Some(json::validation::USize64(0)),
-		count: json::validation::USize64(flat_normals.len() as u64),
+		count: json::validation::USize64(positions.len() as u64),
 		component_type: Valid(json::accessor::GenericComponentType(
 			json::accessor::ComponentType::F32,
 		)),
+		type_: Valid(json::accessor::Type::Vec3),
 		extensions: None,
 		extras: Default::default(),
+		min: Some(serde_json::json!([pos_min[0], pos_min[1], pos_min[2]])),
+		max: Some(serde_json::json!([pos_max[0], pos_max[1], pos_max[2]])),
+		name: None,
+		normalized: false,
+		sparse: None,
+	});
+
+	// BufferView / Accessor: normals (ARRAY_BUFFER, F32, VEC3)
+	root.buffer_views.push(json::buffer::View {
+		buffer: json::Index::new(0),
+		byte_length: json::validation::USize64(nrm_len as u64),
+		byte_offset: Some(json::validation::USize64(nrm_offset as u64)),
+		byte_stride: None,
+		name: None,
+		target: Some(Valid(json::buffer::Target::ArrayBuffer)),
+		extensions: None,
+		extras: Default::default(),
+	});
+	root.accessors.push(json::Accessor {
+		buffer_view: Some(json::Index::new(2)),
+		byte_offset: Some(json::validation::USize64(0)),
+		count: json::validation::USize64(normals.len() as u64),
+		component_type: Valid(json::accessor::GenericComponentType(
+			json::accessor::ComponentType::F32,
+		)),
 		type_: Valid(json::accessor::Type::Vec3),
+		extensions: None,
+		extras: Default::default(),
 		min: None,
 		max: None,
 		name: None,
@@ -290,21 +308,21 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 		sparse: None,
 	});
 
+	// Primitive: indexed triangles
 	let primitive = json::mesh::Primitive {
 		attributes: {
 			let mut map = std::collections::BTreeMap::new();
-			map.insert(Valid(json::mesh::Semantic::Positions), json::Index::new(0));
-			map.insert(Valid(json::mesh::Semantic::Normals), json::Index::new(1));
+			map.insert(Valid(json::mesh::Semantic::Positions), json::Index::new(1));
+			map.insert(Valid(json::mesh::Semantic::Normals), json::Index::new(2));
 			map
 		},
+		indices: Some(json::Index::new(0)),
 		extensions: None,
 		extras: Default::default(),
-		indices: None,
 		material: None,
 		mode: Valid(json::mesh::Mode::Triangles),
 		targets: None,
 	};
-
 	root.meshes.push(json::Mesh {
 		extensions: None,
 		extras: Default::default(),
@@ -313,32 +331,57 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 		weights: None,
 	});
 
-	let node_extras: json::extras::Extras = if !edge_data.is_empty() {
-		let edges_json = serde_json::json!({ "edges": edge_data });
-		let raw = serde_json::value::RawValue::from_string(
-			serde_json::to_string(&edges_json).map_err(|e| e.to_string())?,
-		)
-		.map_err(|e| e.to_string())?;
-		Some(raw)
-	} else {
-		None
-	};
+	// Accessor[3]: edges orphan（BIN chunk内、どのmesh primitiveにも参照されない）
+	// root.extrasにインデックス(3)だけ記録し、JSON chunkを数KBに抑える
+	if !edge_data.is_empty() {
+		root.buffer_views.push(json::buffer::View {
+			buffer: json::Index::new(0),
+			byte_length: json::validation::USize64(edge_len as u64),
+			byte_offset: Some(json::validation::USize64(edge_offset as u64)),
+			byte_stride: None,
+			name: None,
+			target: Some(Valid(json::buffer::Target::ArrayBuffer)),
+			extensions: None,
+			extras: Default::default(),
+		});
+		root.accessors.push(json::Accessor {
+			buffer_view: Some(json::Index::new(3)),
+			byte_offset: Some(json::validation::USize64(0)),
+			count: json::validation::USize64((edge_data.len() / 3) as u64),
+			component_type: Valid(json::accessor::GenericComponentType(
+				json::accessor::ComponentType::F32,
+			)),
+			type_: Valid(json::accessor::Type::Vec3),
+			extensions: None,
+			extras: Default::default(),
+			min: None,
+			max: None,
+			name: None,
+			normalized: false,
+			sparse: None,
+		});
+		root.extras = Some(
+			serde_json::value::RawValue::from_string(
+				serde_json::to_string(&serde_json::json!({ "edgeAccessor": 3 }))
+					.map_err(|e| e.to_string())?,
+			)
+			.map_err(|e| e.to_string())?,
+		);
+	}
 
 	root.nodes.push(json::Node {
 		mesh: Some(json::Index::new(0)),
-		extras: node_extras,
 		..Default::default()
 	});
-
-	let scene = json::Scene {
+	root.scenes.push(json::Scene {
 		extensions: None,
 		extras: Default::default(),
 		name: None,
 		nodes: vec![json::Index::new(0)],
-	};
-	root.scenes.push(scene);
+	});
 	root.scene = Some(json::Index::new(0));
 
+	// GLBシリアライズ
 	let json_string = json::serialize::to_string(&root).map_err(|e| e.to_string())?;
 	let mut json_bytes = json_string.into_bytes();
 	while json_bytes.len() % 4 != 0 {
@@ -346,17 +389,14 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 	}
 
 	let mut glb = Vec::new();
+	let total_size = 12 + 8 + json_bytes.len() + 8 + buffer.len();
 	glb.write_all(b"glTF").unwrap();
 	glb.write_all(&2u32.to_le_bytes()).unwrap();
-
-	let total_size = 12 + 8 + json_bytes.len() + 8 + buffer.len();
 	glb.write_all(&(total_size as u32).to_le_bytes()).unwrap();
-
 	glb.write_all(&(json_bytes.len() as u32).to_le_bytes())
 		.unwrap();
 	glb.write_all(b"JSON").unwrap();
 	glb.write_all(&json_bytes).unwrap();
-
 	glb.write_all(&(buffer.len() as u32).to_le_bytes()).unwrap();
 	glb.write_all(b"BIN\0").unwrap();
 	glb.write_all(&buffer).unwrap();
