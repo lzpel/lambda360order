@@ -142,16 +142,11 @@ fn shape(node: &ShapeNode, breps: &HashMap<String, Vec<u8>>) -> Result<Vec<u8>, 
 pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, String> {
 	use json::validation::Checked::Valid;
 
-	// OCCのメッシュデータをf32に変換
+	// OCCのメッシュデータをf32に変換（KHR_materials_unlit使用のため法線は不要）
 	let positions: Vec<[f32; 3]> = mesh
 		.vertices
 		.iter()
 		.map(|v| [v.x as f32, v.y as f32, v.z as f32])
-		.collect();
-	let normals: Vec<[f32; 3]> = mesh
-		.normals
-		.iter()
-		.map(|n| [n.x as f32, n.y as f32, n.z as f32])
 		.collect();
 
 	// POSITIONのmin/maxを計算（glTF spec必須）
@@ -164,32 +159,34 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 		}
 	}
 
-	// indicesをu32に変換（usizeは64bit環境で8バイト、頂点数がu16上限を超える可能性もある）
-	let indices_u32: Vec<u32> = mesh.indices.iter().map(|&i| i as u32).collect();
-
-	// バイナリバッファ: indices | pad | positions | normals
-	let idx_bytes = unsafe {
-		std::slice::from_raw_parts(indices_u32.as_ptr() as *const u8, indices_u32.len() * 4)
+	// インデックス: 頂点数 ≤ 65535 なら U16 (2 bytes/idx)、超えたら U32 (4 bytes/idx)
+	let idx_count = mesh.indices.len();
+	let (idx_bytes_owned, idx_component_type) = if positions.len() <= 65535 {
+		let v: Vec<u16> = mesh.indices.iter().map(|&i| i as u16).collect();
+		let bytes =
+			unsafe { std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 2) }.to_vec();
+		(bytes, json::accessor::ComponentType::U16)
+	} else {
+		let v: Vec<u32> = mesh.indices.iter().map(|&i| i as u32).collect();
+		let bytes =
+			unsafe { std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 4) }.to_vec();
+		(bytes, json::accessor::ComponentType::U32)
 	};
-	let pos_bytes = unsafe {
-		std::slice::from_raw_parts(positions.as_ptr() as *const u8, positions.len() * 12)
-	};
-	let nrm_bytes =
-		unsafe { std::slice::from_raw_parts(normals.as_ptr() as *const u8, normals.len() * 12) };
 
+	// バイナリバッファ: indices | pad | positions | edges
 	let mut buffer = Vec::new();
-	let idx_offset = 0;
-	buffer.extend_from_slice(idx_bytes);
-	let idx_len = idx_bytes.len();
+	buffer.extend_from_slice(&idx_bytes_owned);
+	let idx_len = idx_bytes_owned.len();
 	while buffer.len() % 4 != 0 {
 		buffer.push(0);
 	}
+
 	let pos_offset = buffer.len();
+	let pos_bytes = unsafe {
+		std::slice::from_raw_parts(positions.as_ptr() as *const u8, positions.len() * 12)
+	};
 	buffer.extend_from_slice(pos_bytes);
 	let pos_len = pos_bytes.len();
-	let nrm_offset = buffer.len();
-	buffer.extend_from_slice(nrm_bytes);
-	let nrm_len = nrm_bytes.len();
 
 	// エッジデータ
 	let mut edge_data: Vec<f32> = Vec::new();
@@ -224,11 +221,11 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 		extras: Default::default(),
 	});
 
-	// BufferView / Accessor: indices (ELEMENT_ARRAY_BUFFER, U16, SCALAR)
+	// BufferView[0] / Accessor[0]: indices
 	root.buffer_views.push(json::buffer::View {
 		buffer: json::Index::new(0),
 		byte_length: json::validation::USize64(idx_len as u64),
-		byte_offset: Some(json::validation::USize64(idx_offset as u64)),
+		byte_offset: Some(json::validation::USize64(0)),
 		byte_stride: None,
 		name: None,
 		target: Some(Valid(json::buffer::Target::ElementArrayBuffer)),
@@ -238,10 +235,8 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 	root.accessors.push(json::Accessor {
 		buffer_view: Some(json::Index::new(0)),
 		byte_offset: Some(json::validation::USize64(0)),
-		count: json::validation::USize64(indices_u32.len() as u64),
-		component_type: Valid(json::accessor::GenericComponentType(
-			json::accessor::ComponentType::U32,
-		)),
+		count: json::validation::USize64(idx_count as u64),
+		component_type: Valid(json::accessor::GenericComponentType(idx_component_type)),
 		type_: Valid(json::accessor::Type::Scalar),
 		extensions: None,
 		extras: Default::default(),
@@ -252,7 +247,7 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 		sparse: None,
 	});
 
-	// BufferView / Accessor: positions (ARRAY_BUFFER, F32, VEC3)
+	// BufferView[1] / Accessor[1]: positions (ARRAY_BUFFER, F32, VEC3)
 	root.buffer_views.push(json::buffer::View {
 		buffer: json::Index::new(0),
 		byte_length: json::validation::USize64(pos_len as u64),
@@ -280,40 +275,11 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 		sparse: None,
 	});
 
-	// BufferView / Accessor: normals (ARRAY_BUFFER, F32, VEC3)
-	root.buffer_views.push(json::buffer::View {
-		buffer: json::Index::new(0),
-		byte_length: json::validation::USize64(nrm_len as u64),
-		byte_offset: Some(json::validation::USize64(nrm_offset as u64)),
-		byte_stride: None,
-		name: None,
-		target: Some(Valid(json::buffer::Target::ArrayBuffer)),
-		extensions: None,
-		extras: Default::default(),
-	});
-	root.accessors.push(json::Accessor {
-		buffer_view: Some(json::Index::new(2)),
-		byte_offset: Some(json::validation::USize64(0)),
-		count: json::validation::USize64(normals.len() as u64),
-		component_type: Valid(json::accessor::GenericComponentType(
-			json::accessor::ComponentType::F32,
-		)),
-		type_: Valid(json::accessor::Type::Vec3),
-		extensions: None,
-		extras: Default::default(),
-		min: None,
-		max: None,
-		name: None,
-		normalized: false,
-		sparse: None,
-	});
-
-	// Primitive: indexed triangles
+	// Primitive: indexed triangles（normals なし、material は後でJSONに注入）
 	let primitive = json::mesh::Primitive {
 		attributes: {
 			let mut map = std::collections::BTreeMap::new();
 			map.insert(Valid(json::mesh::Semantic::Positions), json::Index::new(1));
-			map.insert(Valid(json::mesh::Semantic::Normals), json::Index::new(2));
 			map
 		},
 		indices: Some(json::Index::new(0)),
@@ -331,8 +297,8 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 		weights: None,
 	});
 
-	// Accessor[3]: edges orphan（BIN chunk内、どのmesh primitiveにも参照されない）
-	// root.extrasにインデックス(3)だけ記録し、JSON chunkを数KBに抑える
+	// Accessor[2]: edges orphan（BIN chunk内、どのmesh primitiveにも参照されない）
+	// normals を削除したため index 2（旧: 3）
 	if !edge_data.is_empty() {
 		root.buffer_views.push(json::buffer::View {
 			buffer: json::Index::new(0),
@@ -345,7 +311,7 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 			extras: Default::default(),
 		});
 		root.accessors.push(json::Accessor {
-			buffer_view: Some(json::Index::new(3)),
+			buffer_view: Some(json::Index::new(2)),
 			byte_offset: Some(json::validation::USize64(0)),
 			count: json::validation::USize64((edge_data.len() / 3) as u64),
 			component_type: Valid(json::accessor::GenericComponentType(
@@ -362,7 +328,7 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 		});
 		root.extras = Some(
 			serde_json::value::RawValue::from_string(
-				serde_json::to_string(&serde_json::json!({ "edgeAccessor": 3 }))
+				serde_json::to_string(&serde_json::json!({ "edgeAccessor": 2 }))
 					.map_err(|e| e.to_string())?,
 			)
 			.map_err(|e| e.to_string())?,
@@ -381,8 +347,26 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 	});
 	root.scene = Some(json::Index::new(0));
 
-	// GLBシリアライズ
+	// gltf-json でシリアライズ後、KHR_materials_unlit マテリアルを serde_json で注入
+	// （gltf-json の KHR_materials_unlit は feature flag が必要なため直接注入する）
 	let json_string = json::serialize::to_string(&root).map_err(|e| e.to_string())?;
+	let mut json_val: serde_json::Value =
+		serde_json::from_str(&json_string).map_err(|e| e.to_string())?;
+
+	json_val["extensionsUsed"] = serde_json::json!(["KHR_materials_unlit"]);
+	json_val["materials"] = serde_json::json!([{
+		"extensions": { "KHR_materials_unlit": {} },
+		"pbrMetallicRoughness": {
+			"baseColorFactor": [0.8, 0.8, 0.8, 1.0],
+			"metallicFactor": 0.0,
+			"roughnessFactor": 1.0
+		},
+		"alphaMode": "OPAQUE",
+		"doubleSided": true
+	}]);
+	json_val["meshes"][0]["primitives"][0]["material"] = serde_json::json!(0);
+
+	let json_string = serde_json::to_string(&json_val).map_err(|e| e.to_string())?;
 	let mut json_bytes = json_string.into_bytes();
 	while json_bytes.len() % 4 != 0 {
 		json_bytes.push(b' ');
