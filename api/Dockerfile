@@ -10,9 +10,8 @@ RUN find target/release -maxdepth 1 -type f -executable | xargs -IX install -D X
 FROM base AS runner
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.8.3 /lambda-adapter /opt/extensions/lambda-adapter
 ENV PORT=8080
-COPY . .
 COPY --from=builder /var/task/target/bin/. ./
-ENTRYPOINT ./api
+ENTRYPOINT ["./api"]
 # 基本ステージbaseからrunnerとbuilderを派生させる。rust:latest イメージは簡単なテストに便利だがクラウド用バイナリには使用しない(builderには使用しない)。glibcのバージョンがbuilderとrunnerで異なると動かない可能性があるため。
 # bash
 # docker build . -t api
