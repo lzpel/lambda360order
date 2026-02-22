@@ -53,22 +53,25 @@ export class AwsStack extends cdk.Stack {
 		);
 
 		// S3バケットや
-		const bucket_step = new s3.Bucket(this, 'step', {
+		const bucket_temp = new s3.Bucket(this, 'temp', {
+			lifecycleRules: [{
+				expiration: cdk.Duration.days(1),
+			}],
 			cors: [{
 				allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST, s3.HttpMethods.HEAD],
 				allowedOrigins: ['*'],
 				allowedHeaders: ['*'],
 			}],
 		});
-		const bucket_memo = new s3.Bucket(this, 'memo');
+		const bucket_main = new s3.Bucket(this, 'main');
 
 		// Lambdaにアクセス権限あげるで
-		bucket_step.grantReadWrite(apiFunction);
-		bucket_memo.grantReadWrite(apiFunction);
+		bucket_temp.grantReadWrite(apiFunction);
+		bucket_main.grantReadWrite(apiFunction);
 
 		// Lambdaに環境変数渡すで
-		apiFunction.addEnvironment('BUCKET_STEP', bucket_step.bucketName);
-		apiFunction.addEnvironment('BUCKET_MEMO', bucket_memo.bucketName);
+		apiFunction.addEnvironment('BUCKET_TEMP', bucket_temp.bucketName);
+		apiFunction.addEnvironment('BUCKET_MAIN', bucket_main.bucketName);
 
 		// CloudFrontディストリビューションや
 		const distribution = new cloudfront.Distribution(this, 'ApiDistribution', {

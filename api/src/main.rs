@@ -1,3 +1,4 @@
+mod content_hash;
 #[allow(dead_code)]
 #[allow(unused_variables)]
 #[allow(unused_imports)]
@@ -6,7 +7,7 @@
 mod openapi;
 mod server;
 mod shape;
-
+mod step_to_brep;
 use crate::openapi::{axum_router, print_axum_router};
 use crate::server::Server;
 

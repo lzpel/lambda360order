@@ -36,12 +36,13 @@
         }
       }
     },
-    "/step/{uuid}/status": {
-      "get": {
-        "operationId": "Step_status",
+    "/step/{content_hash}/execute": {
+      "post": {
+        "operationId": "Step_execute",
+        "description": "指定した content_hash のファイルの変換処理（STEP -> BREP）を開始し、進捗をストリーミングします。\nフロントエンドは各ファイルにつき1回このAPIを呼び出します。\n\n進捗データは `{0以上の数値} {メッセージ}` の形式で送信されます。\n- 100: 正常終了\n- 101以上: 異常終了（STEPファイルとして認識不能、ハッシュ不一致、タイムアウト、ファイル過大など）",
         "parameters": [
           {
-            "name": "uuid",
+            "name": "content_hash",
             "in": "path",
             "required": true,
             "schema": {
@@ -53,25 +54,10 @@
           "200": {
             "description": "The request has succeeded.",
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "progress": {
-                      "type": "integer",
-                      "format": "int32"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "content_hash": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "progress",
-                    "message"
-                  ]
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -79,12 +65,13 @@
         }
       }
     },
-    "/step/{uuid}/upload": {
+    "/step/{content_hash}/upload": {
       "post": {
         "operationId": "Step_upload_url",
+        "description": "STEPファイルのSHA256ハッシュを content_hash として渡し、アップロード用のURLを取得します。\nフロントエンドはこのURLに対して実際のファイルをアップロードします。",
         "parameters": [
           {
-            "name": "uuid",
+            "name": "content_hash",
             "in": "path",
             "required": true,
             "schema": {

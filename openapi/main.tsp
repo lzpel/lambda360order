@@ -9,18 +9,39 @@ using TypeSpec.Http;
 @server("/api", "Main server")
 namespace Lambda360;
 
+/**
+ * このAPIサーバーのバージョンと使用しているS3バケット名を返します。
+ */
+@route("/version")
+@get
+op version(): string;
+
+/**
+ * STEPファイルのアップロード、BREP形式への変換、およびその進捗管理を担当します。
+ */
 @route("/step")
 namespace Step {
-  @route("/{uuid}/upload")
+  /**
+   * STEPファイルのSHA256ハッシュを content_hash として渡し、アップロード用のURLを取得します。
+   * フロントエンドはこのURLに対して実際のファイルをアップロードします。
+   */
+  @route("/{content_hash}/upload")
   @post
-  op upload_url(@path uuid: string): string;
+  op upload_url(@path content_hash: string): string;
 
-  @route("/{uuid}/status")
-  @get
-  op status(@path uuid: string): {
-    progress: int32;
-    message: string;
-    content_hash?: string;
+  /**
+   * 指定した content_hash のファイルの変換処理（STEP -> BREP）を開始し、進捗をストリーミングします。
+   * フロントエンドは各ファイルにつき1回このAPIを呼び出します。
+   *
+   * 進捗データは `{0以上の数値} {メッセージ}` の形式で送信されます。
+   * - 100: 正常終了
+   * - 101以上: 異常終了（STEPファイルとして認識不能、ハッシュ不一致、タイムアウト、ファイル過大など）
+   */
+  @route("/{content_hash}/execute")
+  @post
+  op execute(@path content_hash: string): {
+    @header contentType: "text/event-stream";
+    @body body: bytes;
   };
 }
 

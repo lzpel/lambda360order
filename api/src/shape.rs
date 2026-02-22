@@ -14,7 +14,7 @@ use std::io::Write;
 /// Phase 2: HashSetのキーを元にbucket_memoから並列ダウンロードしてHashMapに格納
 pub async fn collect_breps(
 	node: &ShapeNode,
-	bucket_memo: &ngoni::s3::S3Storage,
+	bucket_main: &ngoni::s3::S3Storage,
 ) -> Result<HashMap<String, Vec<u8>>, String> {
 	// Phase 1: sha256キーの収集（重複排除）
 	let mut keys = std::collections::HashSet::new();
@@ -23,10 +23,10 @@ pub async fn collect_breps(
 	// Phase 2: 並列ダウンロード（&S3StorageはCopyなのでasync moveでキャプチャ可能）
 	let futures = keys.into_iter().map(|sha256| async move {
 		let key = format!("{}.brep", sha256);
-		match bucket_memo.read(&key).await {
+		match bucket_main.read(&key).await {
 			Ok((_meta, data)) => Ok((sha256, data)),
 			Err(_) => Err(format!(
-				"BRep for '{}' not found in memo bucket; STEP upload/conversion may be incomplete.",
+				"BRep for '{}' not found in main bucket; STEP upload/conversion may be incomplete.",
 				sha256
 			)),
 		}
@@ -74,7 +74,7 @@ fn collect_keys(node: &ShapeNode, keys: &mut std::collections::HashSet<String>) 
 pub async fn cached_shape(
 	node: &ShapeNode,
 	breps: &HashMap<String, Vec<u8>>,
-	bucket_memo: &ngoni::s3::S3Storage,
+	bucket_main: &ngoni::s3::S3Storage,
 ) -> Result<Vec<u8>, String> {
 	// ShapeNodeのJSONをRFC 8785 (JCS) に従いsha256でキャッシュキーを生成
 	let json_str = serde_json_canonicalizer::to_string(node).map_err(|e| e.to_string())?;
@@ -86,13 +86,13 @@ pub async fn cached_shape(
 	let glb_key = format!("{}.glb", hash);
 
 	// キャッシュヒットチェック
-	if let Ok((_meta, data)) = bucket_memo.read(&glb_key).await {
+	if let Ok((_meta, data)) = bucket_main.read(&glb_key).await {
 		return Ok(data);
 	}
 
-	// キャッシュミス: shape()でGLBを計算してbucket_memoに保存
+	// キャッシュミス: shape()でGLBを計算してbucket_mainに保存
 	let glb = shape(node, breps)?;
-	bucket_memo
+	bucket_main
 		.write(
 			&glb_key,
 			glb.clone(),
@@ -101,7 +101,7 @@ pub async fn cached_shape(
 			None,
 		)
 		.await
-		.map_err(|e| format!("Failed to write GLB to bucket_memo: {}", e))?;
+		.map_err(|e| format!("Failed to write GLB to bucket_main: {}", e))?;
 
 	Ok(glb)
 }

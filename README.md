@@ -5,7 +5,8 @@
 
 ## apiのurl
 
-https://dfrujiq0byx89.cloudfront.net/api/ui
+- **Main API**: https://dfrujiq0byx89.cloudfront.net/api/ui
+- **Sandbox Stream API (Experimental)**: https://dfrujiq0byx89.cloudfront.net/sandbox-stream-api/ui (実験場)
 
 ## 主要なフォルダの詳細
 
@@ -37,6 +38,9 @@ https://dfrujiq0byx89.cloudfront.net/api/ui
 ### `/sandbox-opencascade-rs` (3D Engine Sandbox)
 - **技術スタック**: Rust, OpenCascade
 - **役割**: 3D幾何計算エンジンの検証用環境。WASM化や高速化のプロトタイプ開発。
+
+### `/sandbox-stream-api`
+- **役割**: ストリーミングAPI（SSE）の実験場。
 
 ### `/public`
 - **役割**: 共通の静的アセット（3Dモデルデータやビルド済みウィジェット）の格納。
