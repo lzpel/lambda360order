@@ -26,13 +26,6 @@ pub trait ApiInterface {
 	) -> impl Future<Output = Result<AuthContext, String>> + Send {
 		async { Ok(Default::default()) }
 	}
-	// GET /version
-	fn version(
-		&self,
-		_req: VersionRequest,
-	) -> impl Future<Output = VersionResponse> + Send {
-		async { Default::default() }
-	}
 	// POST /shape
 	fn shape_compute(
 		&self,
@@ -47,11 +40,22 @@ pub trait ApiInterface {
 	) -> impl Future<Output = StepExecuteResponse> + Send {
 		async { Default::default() }
 	}
+	// GET /step/{content_hash}/status
+	fn step_status(
+		&self,
+		_req: StepStatusRequest,
+	) -> impl Future<Output = StepStatusResponse> + Send {
+		async { Default::default() }
+	}
 	// POST /step/{content_hash}/upload
 	fn step_upload_url(
 		&self,
 		_req: StepUploadUrlRequest,
 	) -> impl Future<Output = StepUploadUrlResponse> + Send {
+		async { Default::default() }
+	}
+	// GET /version
+	fn version(&self, _req: VersionRequest) -> impl Future<Output = VersionResponse> + Send {
 		async { Default::default() }
 	}
 }
@@ -62,23 +66,6 @@ pub struct AuthContext {
 	pub subject: String,  // User identifier (e.g., "auth0|123", "google-oauth2|456")
 	pub subject_id: u128, // UUID compatible numeric ID
 	pub scopes: Vec<String>, // Scopes (e.g., "read:foo", "write:bar")
-}
-
-// Request type for version
-#[derive(Debug)]
-pub struct VersionRequest {
-	pub request: axum::http::Request<axum::body::Body>,
-}
-// Response type for version
-#[derive(Debug)]
-pub enum VersionResponse {
-	Status200(String),
-	Raw(axum::response::Response),
-}
-impl Default for VersionResponse {
-	fn default() -> Self {
-		Self::Status200(Default::default())
-	}
 }
 
 // Request type for shape_compute
@@ -117,10 +104,34 @@ impl AsRef<axum::http::Request<axum::body::Body>> for StepExecuteRequest {
 // Response type for step_execute
 #[derive(Debug)]
 pub enum StepExecuteResponse {
-	Status200(Vec<u8>),
+	Status204,
+	Status500(String),
 	Raw(axum::response::Response), // Variant for custom responses
 }
 impl Default for StepExecuteResponse {
+	fn default() -> Self {
+		Self::Status204
+	}
+}
+// Request type for step_status
+#[derive(Debug)]
+pub struct StepStatusRequest {
+	pub content_hash: String,
+	pub request: axum::http::Request<axum::body::Body>,
+}
+impl AsRef<axum::http::Request<axum::body::Body>> for StepStatusRequest {
+	fn as_ref(&self) -> &axum::http::Request<axum::body::Body> {
+		&self.request
+	}
+}
+// Response type for step_status
+#[derive(Debug)]
+pub enum StepStatusResponse {
+	Status200(StepStatusBody),
+	Status404,
+	Raw(axum::response::Response), // Variant for custom responses
+}
+impl Default for StepStatusResponse {
 	fn default() -> Self {
 		Self::Status200(Default::default())
 	}
@@ -147,6 +158,35 @@ impl Default for StepUploadUrlResponse {
 		Self::Status200(Default::default())
 	}
 }
+// Request type for version
+#[derive(Debug)]
+pub struct VersionRequest {
+	pub request: axum::http::Request<axum::body::Body>,
+}
+impl AsRef<axum::http::Request<axum::body::Body>> for VersionRequest {
+	fn as_ref(&self) -> &axum::http::Request<axum::body::Body> {
+		&self.request
+	}
+}
+// Response type for version
+#[derive(Debug)]
+pub enum VersionResponse {
+	Status200(String),
+	Raw(axum::response::Response), // Variant for custom responses
+}
+impl Default for VersionResponse {
+	fn default() -> Self {
+		Self::Status200(Default::default())
+	}
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct BadRequestResponse {
+	pub r#body: String,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ForbiddenResponse {}
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct IntersectNode {
@@ -217,6 +257,13 @@ pub struct StepNode {
 }
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct StepStatusBody {
+	pub r#message: String,
+	pub r#progress: i32,
+	pub r#timestamp: i64,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct StretchNode {
 	pub r#cut: Vec<NumberOrExpr>,
 	pub r#delta: Vec<NumberOrExpr>,
@@ -258,32 +305,6 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(
 	instance: std::sync::Arc<S>,
 ) -> axum::Router {
 	let router = axum::Router::new();
-	let i = instance.clone();
-	let router = router.route(
-		"/version",
-		axum::routing::get(
-			|request: axum::http::Request<axum::body::Body>| async move {
-				let ret = S::version(
-					i.as_ref(),
-					VersionRequest {
-						request: axum::http::Request::from_parts(
-							request.into_parts().0,
-							Default::default(),
-						),
-					},
-				)
-				.await;
-				match ret {
-					VersionResponse::Status200(v) => axum::response::Response::builder()
-						.status(axum::http::StatusCode::from_u16(200).unwrap())
-						.header(axum::http::header::CONTENT_TYPE, "text/plain")
-						.body(axum::body::Body::from(v))
-						.unwrap(),
-					VersionResponse::Raw(v) => v,
-				}
-			},
-		),
-	);
 	let i = instance.clone();
 	let router = router.route(
 		"/shape",
@@ -348,12 +369,61 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(
 				)
 				.await;
 				match ret {
-					StepExecuteResponse::Status200(v) => axum::response::Response::builder()
-						.status(axum::http::StatusCode::from_u16(200).unwrap())
-						.header(axum::http::header::CONTENT_TYPE, "text/event-stream")
+					StepExecuteResponse::Status204 => axum::response::Response::builder()
+						.status(axum::http::StatusCode::from_u16(204).unwrap())
+						.body(axum::body::Body::empty())
+						.unwrap(),
+					StepExecuteResponse::Status500(v) => axum::response::Response::builder()
+						.status(axum::http::StatusCode::from_u16(500).unwrap())
+						.header(axum::http::header::CONTENT_TYPE, "text/plain")
 						.body(axum::body::Body::from(v))
 						.unwrap(),
 					StepExecuteResponse::Raw(v) => v,
+				}
+			},
+		),
+	);
+	let i = instance.clone();
+	let router = router.route(
+		"/step/{content_hash}/status",
+		axum::routing::get(
+			|path: axum::extract::Path<HashMap<String, String>>,
+			 query: axum::extract::Query<HashMap<String, String>>,
+			 header: axum::http::HeaderMap,
+			 request: axum::http::Request<axum::body::Body>| async move {
+				let (parts, body) = request.into_parts();
+				let ret = S::step_status(
+					i.as_ref(),
+					StepStatusRequest {
+						r#content_hash: {
+							let v = path.get("content_hash").and_then(|v| v.parse().ok());
+							match v {
+								Some(v) => v,
+								None => {
+									return text_response(
+										axum::http::StatusCode::from_u16(400).unwrap(),
+										format!("parse error: content_hash in path={:?}", path),
+									);
+								}
+							}
+						},
+						request: axum::http::Request::from_parts(parts.clone(), Default::default()),
+					},
+				)
+				.await;
+				match ret {
+					StepStatusResponse::Status200(v) => axum::response::Response::builder()
+						.status(axum::http::StatusCode::from_u16(200).unwrap())
+						.header(axum::http::header::CONTENT_TYPE, "application/json")
+						.body(axum::body::Body::from(
+							serde_json::to_vec_pretty(&v).expect("error serialize response json"),
+						))
+						.unwrap(),
+					StepStatusResponse::Status404 => axum::response::Response::builder()
+						.status(axum::http::StatusCode::from_u16(404).unwrap())
+						.body(axum::body::Body::empty())
+						.unwrap(),
+					StepStatusResponse::Raw(v) => v,
 				}
 			},
 		),
@@ -397,8 +467,35 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(
 			},
 		),
 	);
+	let i = instance.clone();
+	let router = router.route(
+		"/version",
+		axum::routing::get(
+			|path: axum::extract::Path<HashMap<String, String>>,
+			 query: axum::extract::Query<HashMap<String, String>>,
+			 header: axum::http::HeaderMap,
+			 request: axum::http::Request<axum::body::Body>| async move {
+				let (parts, body) = request.into_parts();
+				let ret = S::version(
+					i.as_ref(),
+					VersionRequest {
+						request: axum::http::Request::from_parts(parts.clone(), Default::default()),
+					},
+				)
+				.await;
+				match ret {
+					VersionResponse::Status200(v) => axum::response::Response::builder()
+						.status(axum::http::StatusCode::from_u16(200).unwrap())
+						.header(axum::http::header::CONTENT_TYPE, "text/plain")
+						.body(axum::body::Body::from(v))
+						.unwrap(),
+					VersionResponse::Raw(v) => v,
+				}
+			},
+		),
+	);
 	let router = router.route("/openapi.json", axum::routing::get(|| async move{
-			r###"{"components":{"schemas":{"IntersectNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン共通部分 (BRepAlgoAPI_Common)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["intersect"],"type":"string"}},"required":["op","a","b"],"type":"object"},"NumberOrExpr":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"RotateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"回転","properties":{"axis":{"description":"回転軸ベクトル [ax, ay, az]","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"deg":{"allOf":[{"$ref":"#/components/schemas/NumberOrExpr"}],"description":"回転角度 (度)"},"op":{"enum":["rotate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","axis","deg"],"type":"object"},"ScaleNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"一様拡大縮小","properties":{"factor":{"$ref":"#/components/schemas/NumberOrExpr"},"op":{"enum":["scale"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","factor"],"type":"object"},"ShapeNode":{"anyOf":[{"$ref":"#/components/schemas/StepNode"},{"$ref":"#/components/schemas/UnionShapeNode"},{"$ref":"#/components/schemas/IntersectNode"},{"$ref":"#/components/schemas/SubtractNode"},{"$ref":"#/components/schemas/ScaleNode"},{"$ref":"#/components/schemas/TranslateNode"},{"$ref":"#/components/schemas/RotateNode"},{"$ref":"#/components/schemas/StretchNode"}],"description":"★ここが主役：discriminated union を “ShapeNode” として定義\nこれが OpenAPI で oneOf + discriminator になりやすい"},"ShapeNodeBase":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"StepNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"STEPファイルの読み込み","properties":{"content_hash":{"description":"キャッシュ無効化用コンテンツハッシュ \"sha256:\u003chex64\u003e\"","type":"string"},"op":{"enum":["step"],"type":"string"},"path":{"description":"STEPファイルのパス (S3キー等)","type":"string"}},"required":["op","path"],"type":"object"},"StretchNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"伸縮: 切断面で形状を分割して指定方向に伸ばす","properties":{"cut":{"description":"切断面の座標 [cx, cy, cz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"delta":{"description":"各軸方向の伸縮量 [dx, dy, dz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"op":{"enum":["stretch"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","cut","delta"],"type":"object"},"SubtractNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["subtract"],"type":"string"}},"required":["op","a","b"],"type":"object"},"TranslateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"平行移動","properties":{"op":{"enum":["translate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"},"xyz":{"description":"移動量 [x, y, z] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"}},"required":["op","shape","xyz"],"type":"object"},"UnionShapeNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン合体 (BRepAlgoAPI_Fuse)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["union"],"type":"string"}},"required":["op","a","b"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/shape":{"post":{"description":"ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す","operationId":"Shape_compute","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ShapeNode"}}},"required":true},"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}},"/step/{content_hash}/execute":{"post":{"description":"指定した content_hash のファイルの変換処理（STEP -\u003e BREP）を開始し、進捗をストリーミングします。\nフロントエンドは各ファイルにつき1回このAPIを呼び出します。\n\n進捗データは `{0以上の数値} {メッセージ}` の形式で送信されます。\n- 100: 正常終了\n- 101以上: 異常終了（STEPファイルとして認識不能、ハッシュ不一致、タイムアウト、ファイル過大など）","operationId":"Step_execute","parameters":[{"in":"path","name":"content_hash","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"text/event-stream":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}},"/step/{content_hash}/upload":{"post":{"description":"STEPファイルのSHA256ハッシュを content_hash として渡し、アップロード用のURLを取得します。\nフロントエンドはこのURLに対して実際のファイルをアップロードします。","operationId":"Step_upload_url","parameters":[{"in":"path","name":"content_hash","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"/api","variables":{}}]}"###
+			r###"{"components":{"schemas":{"BadRequestResponse":{"allOf":[{"type":"object"}],"properties":{"body":{"type":"string"}},"required":["body"],"type":"object"},"ForbiddenResponse":{"type":"object"},"IntersectNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン共通部分 (BRepAlgoAPI_Common)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["intersect"],"type":"string"}},"required":["op","a","b"],"type":"object"},"NumberOrExpr":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"RotateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"回転","properties":{"axis":{"description":"回転軸ベクトル [ax, ay, az]","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"deg":{"allOf":[{"$ref":"#/components/schemas/NumberOrExpr"}],"description":"回転角度 (度)"},"op":{"enum":["rotate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","axis","deg"],"type":"object"},"ScaleNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"一様拡大縮小","properties":{"factor":{"$ref":"#/components/schemas/NumberOrExpr"},"op":{"enum":["scale"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","factor"],"type":"object"},"ShapeNode":{"anyOf":[{"$ref":"#/components/schemas/StepNode"},{"$ref":"#/components/schemas/UnionShapeNode"},{"$ref":"#/components/schemas/IntersectNode"},{"$ref":"#/components/schemas/SubtractNode"},{"$ref":"#/components/schemas/ScaleNode"},{"$ref":"#/components/schemas/TranslateNode"},{"$ref":"#/components/schemas/RotateNode"},{"$ref":"#/components/schemas/StretchNode"}],"description":"★ここが主役：discriminated union を “ShapeNode” として定義\nこれが OpenAPI で oneOf + discriminator になりやすい"},"ShapeNodeBase":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"StepNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"STEPファイルの読み込み","properties":{"content_hash":{"description":"キャッシュ無効化用コンテンツハッシュ \"sha256:\u003chex64\u003e\"","type":"string"},"op":{"enum":["step"],"type":"string"},"path":{"description":"STEPファイルのパス (S3キー等)","type":"string"}},"required":["op","path"],"type":"object"},"StepStatusBody":{"properties":{"message":{"type":"string"},"progress":{"format":"int32","type":"integer"},"timestamp":{"format":"int64","type":"integer"}},"required":["timestamp","progress","message"],"type":"object"},"StretchNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"伸縮: 切断面で形状を分割して指定方向に伸ばす","properties":{"cut":{"description":"切断面の座標 [cx, cy, cz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"delta":{"description":"各軸方向の伸縮量 [dx, dy, dz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"op":{"enum":["stretch"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","cut","delta"],"type":"object"},"SubtractNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["subtract"],"type":"string"}},"required":["op","a","b"],"type":"object"},"TranslateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"平行移動","properties":{"op":{"enum":["translate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"},"xyz":{"description":"移動量 [x, y, z] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"}},"required":["op","shape","xyz"],"type":"object"},"UnionShapeNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン合体 (BRepAlgoAPI_Fuse)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["union"],"type":"string"}},"required":["op","a","b"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/shape":{"post":{"description":"ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す","operationId":"Shape_compute","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ShapeNode"}}},"required":true},"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}},"/step/{content_hash}/execute":{"post":{"description":"指定した content_hash のファイルの変換処理（STEP -\u003e BREP）を実行します。\nダウンロード・変換・アップロードがすべて完了したときに 200 を返します。\n失敗した場合は 500 とエラーメッセージを返します。\n進捗は処理中も /step/{content_hash}/status で確認できます。","operationId":"Step_execute","parameters":[{"in":"path","name":"content_hash","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"204":{"description":"There is no content to send for this request, but the headers may be useful. "},"500":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"Server error"}}}},"/step/{content_hash}/status":{"get":{"description":"変換処理の最新進捗を返します。\n- progress 100: 正常終了\n- progress 101以上: 異常終了\n変換がまだ開始されていない場合は 404 を返します。","operationId":"Step_status","parameters":[{"in":"path","name":"content_hash","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StepStatusBody"}}},"description":"The request has succeeded."},"404":{"description":"The server cannot find the requested resource."}}}},"/step/{content_hash}/upload":{"post":{"description":"STEPファイルのSHA256ハッシュを content_hash として渡し、アップロード用のURLを取得します。\nフロントエンドはこのURLに対して実際のファイルをアップロードします。","operationId":"Step_upload_url","parameters":[{"in":"path","name":"content_hash","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}},"/version":{"get":{"description":"このAPIサーバーのバージョンと使用しているS3バケット名を返します。","operationId":"version","responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"/api","variables":{}}]}"###
 		}))
 		.route("/ui", axum::routing::get(|| async move{
 			axum::response::Html(r###"
@@ -449,8 +546,12 @@ impl ApiInterface for TestServer {
 	// async fn shape_compute(&self, _req: ShapeComputeRequest) -> ShapeComputeResponse{Default::default()}
 	// POST /step/{content_hash}/execute
 	// async fn step_execute(&self, _req: StepExecuteRequest) -> StepExecuteResponse{Default::default()}
+	// GET /step/{content_hash}/status
+	// async fn step_status(&self, _req: StepStatusRequest) -> StepStatusResponse{Default::default()}
 	// POST /step/{content_hash}/upload
 	// async fn step_upload_url(&self, _req: StepUploadUrlRequest) -> StepUploadUrlResponse{Default::default()}
+	// GET /version
+	// async fn version(&self, _req: VersionRequest) -> VersionResponse{Default::default()}
 }
 
 /// Estimates the origin URL (scheme://host) from an HTTP request

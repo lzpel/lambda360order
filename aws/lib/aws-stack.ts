@@ -17,7 +17,7 @@ export class AwsStack extends cdk.Stack {
 			"ApiFunction",
 			path.join(__dirname, "..", "..", "api"),
 			{
-				timeout: cdk.Duration.seconds(30),
+				timeout: cdk.Duration.minutes(15),
 				memorySize: 256,
 			},
 			{

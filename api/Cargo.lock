@@ -1805,9 +1805,9 @@ dependencies = [
 
 [[package]]
 name = "ngoni"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f13e8cf6b1bab07a0a1477ea8fff22ee0eeff2779bb0ce6011c91577bb2df531"
+checksum = "81d07760cd68273b985df194981164f39909c493520ebac95217349b6f1e9f81"
 dependencies = [
  "async-stripe",
  "aws-config",

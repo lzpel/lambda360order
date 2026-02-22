@@ -138,3 +138,21 @@ pub async fn write(
 // 利用側の現状
 bucket_main.write(&key, data, Some("application/octet-stream".to_string()), None, None).await
 ```
+
+---
+
+## 反映状況（ngoni v0.1.7 / 2026-02-23）
+
+| # | 提言 | 状況 |
+|---|------|------|
+| 1 | テストのコンパイルエラー | ✅ 修正済み（`let (_meta, read_data) = ...`） |
+| 2 | エラー型の統一 | ✅ 全メソッドが `Result<T, S3Error>` に統一 |
+| 3 | `read()` のボディエラー | ✅ `S3Error::Other(e.to_string())` に修正 |
+| 4 | `Clone` derive | ✅ `#[derive(Debug, Clone)]` 追加 |
+| 5 | `write()` の冗長な引数 | ✅ `write_bytes(key, bytes)` を追加 |
+
+### api/src/server.rs への影響
+
+- `clone_s3()` ヘルパー関数を削除
+- `clone_s3(&self.bucket_temp)` → `self.bucket_temp.clone()` に置き換え
+- `Cargo.toml` の依存を `^0.1.6` → `^0.1.7` に更新

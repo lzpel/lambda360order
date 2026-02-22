@@ -1,5 +1,6 @@
 use crate::content_hash::content_hash as compute_hash;
 use opencascade::primitives::Shape;
+use std::future::Future;
 use std::sync::Arc;
 use tokio::time::Duration;
 
@@ -7,11 +8,15 @@ use tokio::time::Duration;
 ///
 /// 進捗コールバック `on_progress(progress, message)`:
 /// - progress は 1〜99 の範囲で呼ばれる（100/101以上はserver.rs側が送出）
-pub async fn step_to_brep(
+pub async fn step_to_brep<F, Fut>(
 	step_data: Vec<u8>,
 	content_hash: String,
-	on_progress: impl Fn(u32, &str) + Send + Sync + 'static,
-) -> Result<Vec<u8>, String> {
+	on_progress: F,
+) -> Result<Vec<u8>, String>
+where
+	F: Fn(u32, String) -> Fut + Send + Sync + 'static,
+	Fut: Future<Output = ()> + Send + 'static,
+{
 	// step_data が content_hash と一致するか検証
 	let actual_hash = compute_hash(&step_data);
 	if actual_hash != content_hash {
@@ -23,7 +28,7 @@ pub async fn step_to_brep(
 	// Arc で包んでハートビートタスクと共有
 	let on_progress = Arc::new(on_progress);
 
-	on_progress(10, "ハッシュ一致を確認しました");
+	on_progress(10, "ハッシュ一致を確認しました".to_string()).await;
 
 	let tmp_dir = std::env::temp_dir();
 	let step_path = tmp_dir.join(format!("{content_hash}.step"));
@@ -31,7 +36,7 @@ pub async fn step_to_brep(
 
 	std::fs::write(&step_path, &step_data).map_err(|e| format!("一時ファイル書き込み失敗: {e}"))?;
 
-	on_progress(20, "STEPファイル読み込み中 (0秒)");
+	on_progress(20, "STEPファイル読み込み中 (0秒)".to_string()).await;
 
 	// Shape::read_step 実行中、5秒ごとに進捗を更新するタスク
 	let task_heartbeat = tokio::spawn({
@@ -49,7 +54,7 @@ pub async fn step_to_brep(
 				tick += 1;
 				let elapsed = start.elapsed().as_secs();
 				let progress = (20 + tick * 2).min(69);
-				on_progress(progress, &format!("STEPファイル読み込み中 ({elapsed}秒)"));
+				on_progress(progress, format!("STEPファイル読み込み中 ({elapsed}秒)")).await;
 			}
 		}
 	});
@@ -57,15 +62,15 @@ pub async fn step_to_brep(
 	// Shape::read_step はブロッキングなので spawn_blocking へ
 	let step_path2 = step_path.clone();
 	let task_read_step = tokio::task::spawn_blocking(move || Shape::read_step(&step_path2));
-	let shape = task_read_step
+	let shape_result = task_read_step
 		.await
-		.map_err(|e| format!("spawn_blocking失敗: {e:?}"))?
-		.map_err(|e| format!("STEP読み込み失敗: {e:?}"))?;
-
+		.map_err(|e| format!("spawn_blocking失敗: {e:?}"))
+		.and_then(|r| r.map_err(|e| format!("STEP読み込み失敗: {e:?}")));
 	task_heartbeat.abort();
+	let shape = shape_result?;
 	let _ = std::fs::remove_file(&step_path);
 
-	on_progress(70, "BRepバイナリ書き込み中");
+	on_progress(70, "BRepバイナリ書き込み中".to_string()).await;
 
 	shape
 		.write_brep_bin(&brep_path)
@@ -92,7 +97,7 @@ mod tests {
 		let hash = crate::content_hash::content_hash(&step_data);
 		println!("content_hash: {hash}");
 
-		let brep = step_to_brep(step_data, hash, |p, msg| {
+		let brep = step_to_brep(step_data, hash, |p, msg| async move {
 			println!("{p} {msg}");
 		})
 		.await
@@ -105,7 +110,8 @@ mod tests {
 
 	#[tokio::test]
 	async fn hash_mismatch_returns_err() {
-		let result = step_to_brep(b"dummy".to_vec(), "wronghash".to_string(), |_, _| {}).await;
+		let result =
+			step_to_brep(b"dummy".to_vec(), "wronghash".to_string(), |_, _| async {}).await;
 		assert!(result.is_err());
 		assert!(result.unwrap_err().contains("ハッシュ不一致"));
 	}

@@ -2,17 +2,13 @@ use crate::openapi::*;
 use crate::shape::{cached_shape, collect_breps};
 use crate::step_to_brep::step_to_brep;
 use ngoni;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 
 pub struct Server {
 	bucket_temp: ngoni::s3::S3Storage,
 	bucket_main: ngoni::s3::S3Storage,
-}
-
-fn clone_s3(s: &ngoni::s3::S3Storage) -> ngoni::s3::S3Storage {
-	ngoni::s3::S3Storage {
-		bucket: s.bucket.clone(),
-		client: s.client.clone(),
-	}
 }
 
 impl Server {
@@ -43,92 +39,28 @@ impl ApiInterface for Server {
 	}
 
 	async fn step_execute(&self, req: StepExecuteRequest) -> StepExecuteResponse {
-		let content_hash = req.content_hash;
-		let key_step = format!("{}.step", content_hash);
-		let key_brep = format!("{}.brep", content_hash);
-		let bucket_temp = clone_s3(&self.bucket_temp);
-		let bucket_main = clone_s3(&self.bucket_main);
-
-		let (tx, rx) = tokio::sync::mpsc::channel::<Vec<u8>>(32);
-
-		tokio::spawn(async move {
-			macro_rules! send {
-				($code:expr, $msg:expr) => {{
-					let _ = tx.send(format!("{} {}\n", $code, $msg).into_bytes()).await;
-				}};
-			}
-
-			// bucket_temp から STEP をダウンロード
-			send!(1, "ダウンロード中");
-			let step_data = match bucket_temp.read(&key_step).await {
-				Ok((_, data)) => data,
-				Err(e) => {
-					send!(101, format!("ダウンロード失敗: {e:?}"));
-					return;
-				}
-			};
-
-			// STEP → BRep 変換（spawn_blocking は step_to_brep 内部で行う）
-			let tx2 = tx.clone();
-			let brep_data =
-				match step_to_brep(step_data.clone(), content_hash.clone(), move |p, msg| {
-					let _ = tx2.try_send(format!("{p} {msg}\n").into_bytes());
-				})
-				.await
-				{
-					Ok(data) => data,
-					Err(e) => {
-						send!(101, format!("変換失敗: {e}"));
-						return;
-					}
-				};
-
-			// bucket_main へ .step と .brep を並列アップロード
-			send!(90, "アップロード中");
-			let (r_step, r_brep) = tokio::join!(
-				bucket_main.write(
-					&key_step,
-					step_data,
-					Some("application/step".to_string()),
-					None,
-					None,
-				),
-				bucket_main.write(
-					&key_brep,
-					brep_data,
-					Some("application/octet-stream".to_string()),
-					None,
-					None,
-				),
-			);
-			if let Err(e) = r_step {
-				send!(101, format!("STEPアップロード失敗: {e:?}"));
-				return;
-			}
-			if let Err(e) = r_brep {
-				send!(101, format!("BRepアップロード失敗: {e:?}"));
-				return;
-			}
-
-			send!(100, "完了");
-		});
-
-		// mpsc Receiver を Stream に変換してストリーミングレスポンスで返す
-		let stream = futures_util::stream::unfold(rx, |mut rx| async move {
-			rx.recv().await.map(|chunk| {
-				(
-					Ok::<_, std::convert::Infallible>(axum::body::Bytes::from(chunk)),
-					rx,
-				)
-			})
-		});
-		StepExecuteResponse::Raw(
-			axum::response::Response::builder()
-				.status(200)
-				.header("content-type", "text/event-stream")
-				.body(axum::body::Body::from_stream(stream))
-				.unwrap(),
+		let h = &req.content_hash;
+		match step_execute_inner(
+			(format!("{h}.step"), self.bucket_temp.clone()),
+			(format!("{h}.brep"), self.bucket_main.clone()),
+			(format!("{h}.log"), self.bucket_temp.clone()),
 		)
+		.await
+		{
+			Ok(()) => StepExecuteResponse::Status204,
+			Err(msg) => StepExecuteResponse::Status500(msg),
+		}
+	}
+
+	async fn step_status(&self, req: StepStatusRequest) -> StepStatusResponse {
+		let key_log = format!("{}.log", req.content_hash);
+		let Ok((_, data)) = self.bucket_temp.read(&key_log).await else {
+			return StepStatusResponse::Status404;
+		};
+		match serde_json::from_slice::<StepStatusBody>(&data) {
+			Ok(body) => StepStatusResponse::Status200(body),
+			Err(_) => StepStatusResponse::Status404,
+		}
 	}
 
 	async fn step_upload_url(&self, req: StepUploadUrlRequest) -> StepUploadUrlResponse {
@@ -176,4 +108,77 @@ impl ApiInterface for Server {
 			),
 		}
 	}
+}
+
+type FileInBucket = (String, ngoni::s3::S3Storage);
+
+async fn step_execute_inner(
+	key_step: FileInBucket,
+	key_brep: FileInBucket,
+	key_log: FileInBucket,
+) -> Result<(), String> {
+	let (step_key, bucket_src) = key_step;
+	let (brep_key, bucket_dst) = key_brep;
+	let (log_key, bucket_log) = key_log;
+	let content_hash = step_key
+		.strip_suffix(".step")
+		.unwrap_or(&step_key)
+		.to_string();
+	let progress=async move |p: u32, msg: String| {
+		if let Ok(json) = serde_json::to_string(&StepStatusBody {
+			timestamp: std::time::SystemTime::now()
+				.duration_since(std::time::UNIX_EPOCH)
+				.unwrap_or_default()
+				.as_secs() as i64,
+			progress: p as i32,
+			message: msg,
+		}){
+			let bucket = bucket_log.clone();
+			let key = log_key.clone();
+			let _ = bucket.write_bytes(&key, json.into_bytes()).await;
+		}
+	};
+	progress(1, "ダウンロード中".to_string()).await;
+	let (_, step_data) = bucket_src
+		.read(&step_key)
+		.await
+		.map_err(|e| format!("ダウンロード失敗: {e:?}"))?;
+	progress(10, "STEP変換中".to_string()).await;
+	let progress_arc: Arc<
+		dyn Fn(u32, String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+	> = {
+		let progress_cloned=progress.clone();
+		Arc::new(move |p: u32, msg: String| {
+			let progress_cloned2=progress_cloned.clone();
+			Box::pin(async move { progress_cloned2(p, msg).await })
+		})
+	};
+	let brep_data = {
+		step_to_brep(step_data.clone(), content_hash, move |p, msg| {
+			progress_arc(p, msg)
+		})
+		.await
+		.map_err(|e| format!("STEP変換失敗: {e:?}"))?
+	};
+	progress(90, "アップロード中".to_string()).await;
+	let (r_step, r_brep) = tokio::join!(
+		bucket_dst.write(
+			&step_key,
+			step_data,
+			Some("application/step".to_string()),
+			None,
+			None
+		),
+		bucket_dst.write(
+			&brep_key,
+			brep_data,
+			Some("application/octet-stream".to_string()),
+			None,
+			None
+		),
+	);
+	r_step.map_err(|e| format!("STEPアップロード失敗: {e:?}"))?;
+	r_brep.map_err(|e| format!("BRepアップロード失敗: {e:?}"))?;
+	progress(100, "完了".to_string()).await;
+	Ok(())
 }

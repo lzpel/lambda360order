@@ -3,18 +3,50 @@ import "@typespec/openapi3";
 
 using TypeSpec.Http;
 
+// ---------------------------------------------------------------------------
+// API
+// ---------------------------------------------------------------------------
+
 @service(#{
   title: "Lambda360 API",
 })
 @server("/api", "Main server")
 namespace Lambda360;
 
+
+// ---------------------------------------------------------------------------
+// レスポンステンプレート
+// ---------------------------------------------------------------------------
+
+model Response<code extends numeric> {
+	@statusCode statusCode: code;
+}
+model ResponseWithBody<code extends numeric, Body> extends Response<code> {
+	@body body: Body;
+}
+model TextResponse is ResponseWithBody<200, string>;
+model NoContentResponse is Response<204>;
+model BadRequestResponse is ResponseWithBody<400, string>;
+model ForbiddenResponse is Response<403>;
+model NotFoundResponse is Response<404>;
+model ErrorResponse is ResponseWithBody<500, string>;
+
+// ---------------------------------------------------------------------------
+// Step API で使うボディ型
+// ---------------------------------------------------------------------------
+
+model StepStatusBody {
+  timestamp: int64;
+  progress: int32;
+  message: string;
+}
+
 /**
  * このAPIサーバーのバージョンと使用しているS3バケット名を返します。
  */
 @route("/version")
 @get
-op version(): string;
+op version(): TextResponse;
 
 /**
  * STEPファイルのアップロード、BREP形式への変換、およびその進捗管理を担当します。
@@ -27,22 +59,27 @@ namespace Step {
    */
   @route("/{content_hash}/upload")
   @post
-  op upload_url(@path content_hash: string): string;
+  op upload_url(@path content_hash: string): TextResponse;
 
   /**
-   * 指定した content_hash のファイルの変換処理（STEP -> BREP）を開始し、進捗をストリーミングします。
-   * フロントエンドは各ファイルにつき1回このAPIを呼び出します。
-   *
-   * 進捗データは `{0以上の数値} {メッセージ}` の形式で送信されます。
-   * - 100: 正常終了
-   * - 101以上: 異常終了（STEPファイルとして認識不能、ハッシュ不一致、タイムアウト、ファイル過大など）
+   * 指定した content_hash のファイルの変換処理（STEP -> BREP）を実行します。
+   * ダウンロード・変換・アップロードがすべて完了したときに 200 を返します。
+   * 失敗した場合は 500 とエラーメッセージを返します。
+   * 進捗は処理中も /step/{content_hash}/status で確認できます。
    */
   @route("/{content_hash}/execute")
   @post
-  op execute(@path content_hash: string): {
-    @header contentType: "text/event-stream";
-    @body body: bytes;
-  };
+  op execute(@path content_hash: string): NoContentResponse | ErrorResponse;
+
+  /**
+   * 変換処理の最新進捗を返します。
+   * - progress 100: 正常終了
+   * - progress 101以上: 異常終了
+   * 変換がまだ開始されていない場合は 404 を返します。
+   */
+  @route("/{content_hash}/status")
+  @get
+  op status(@path content_hash: string): StepStatusBody | NotFoundResponse;
 }
 
 // ---------------------------------------------------------------------------
