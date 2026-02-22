@@ -9,25 +9,18 @@ using TypeSpec.Http;
 @server("/api", "Main server")
 namespace Lambda360;
 
-model FileExists {
-  exists: boolean;
-  uploadUrl?: string;
-  expiresAt?: utcDateTime;
-}
-
 @route("/step")
 namespace Step {
-  @route("/{sha256}")
-  @get
-  op exists(@path sha256: string): FileExists;
-}
+  @route("/{uuid}/upload")
+  @post
+  op upload_url(@path uuid: string): string;
 
-namespace Viewer {
-  @route("/view")
+  @route("/{uuid}/status")
   @get
-  op view(@query sha256: string): {
-    @header contentType: "model/gltf-binary";
-    @body body: bytes;
+  op status(@path uuid: string): {
+    progress: int32;
+    message: string;
+    content_hash?: string;
   };
 }
 

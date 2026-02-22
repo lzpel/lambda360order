@@ -29,6 +29,29 @@ export class AwsStack extends cdk.Stack {
 			}
 		);
 
+		// ストリーミングAPI Lambda（../sandbox-stream-api のDockerイメージ）
+		// InvokeMode.RESPONSE_STREAM で Lambda レスポンスストリーミングを有効化
+		const { lambda_url: streamApiUrl } = docker_image_function(
+			this,
+			"StreamApiFunction",
+			path.join(__dirname, "..", "..", "sandbox-stream-api"),
+			{
+				timeout: cdk.Duration.minutes(15),
+				memorySize: 128,
+				environment: {
+					AWS_LWA_INVOKE_MODE: 'response_stream',
+				},
+			},
+			{
+				invokeMode: lambda.InvokeMode.RESPONSE_STREAM,
+				cors: {
+					allowedMethods: [lambda.HttpMethod.ALL],
+					allowedOrigins: ["*"],
+					allowedHeaders: ["*"],
+				},
+			}
+		);
+
 		// S3バケットや
 		const bucket_step = new s3.Bucket(this, 'step', {
 			cors: [{
@@ -58,8 +81,21 @@ export class AwsStack extends cdk.Stack {
 			},
 		});
 
+		// /sandbox-stream-api/* -> ストリーミングAPI
+		distribution.addBehavior(
+			'/sandbox-stream-api/*',
+			new origins.FunctionUrlOrigin(streamApiUrl),
+			{
+				viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+				allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+				cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+				originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+			}
+		);
+
 		new cdk.CfnOutput(this, 'FunctionUrl', { value: functionUrl.url });
 		new cdk.CfnOutput(this, 'DistributionDomainName', { value: distribution.domainName });
+		new cdk.CfnOutput(this, 'StreamApiUrl', { value: streamApiUrl.url });
 	}
 }
 

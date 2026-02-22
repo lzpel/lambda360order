@@ -1,0 +1,28 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sandbox Stream API",
+    "version": "0.1.0"
+  },
+  "servers": [
+    { "url": "/sandbox-stream-api" }
+  ],
+  "paths": {
+    "/time": {
+      "get": {
+        "operationId": "getTime",
+        "summary": "Stream current time via SSE (one event per second)",
+        "responses": {
+          "200": {
+            "description": "SSE stream of current UTC time",
+            "content": {
+              "text/event-stream": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

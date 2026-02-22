@@ -33,18 +33,18 @@ pub trait ApiInterface {
 	) -> impl Future<Output = ShapeComputeResponse> + Send {
 		async { Default::default() }
 	}
-	// GET /step/{sha256}
-	fn step_exists(
+	// GET /step/{uuid}/status
+	fn step_status(
 		&self,
-		_req: StepExistsRequest,
-	) -> impl Future<Output = StepExistsResponse> + Send {
+		_req: StepStatusRequest,
+	) -> impl Future<Output = StepStatusResponse> + Send {
 		async { Default::default() }
 	}
-	// GET /view
-	fn viewer_view(
+	// POST /step/{uuid}/upload
+	fn step_upload_url(
 		&self,
-		_req: ViewerViewRequest,
-	) -> impl Future<Output = ViewerViewResponse> + Send {
+		_req: StepUploadUrlRequest,
+	) -> impl Future<Output = StepUploadUrlResponse> + Send {
 		async { Default::default() }
 	}
 }
@@ -79,56 +79,49 @@ impl Default for ShapeComputeResponse {
 		Self::Status200(Default::default())
 	}
 }
-// Request type for step_exists
+// Request type for step_status
 #[derive(Debug)]
-pub struct StepExistsRequest {
-	pub sha256: String,
+pub struct StepStatusRequest {
+	pub uuid: String,
 	pub request: axum::http::Request<axum::body::Body>,
 }
-impl AsRef<axum::http::Request<axum::body::Body>> for StepExistsRequest {
+impl AsRef<axum::http::Request<axum::body::Body>> for StepStatusRequest {
 	fn as_ref(&self) -> &axum::http::Request<axum::body::Body> {
 		&self.request
 	}
 }
-// Response type for step_exists
+// Response type for step_status
 #[derive(Debug)]
-pub enum StepExistsResponse {
-	Status200(FileExists),
+pub enum StepStatusResponse {
+	Status200(PathsStepUuidStatusGetResponses200ContentApplicationJsonSchema),
 	Raw(axum::response::Response), // Variant for custom responses
 }
-impl Default for StepExistsResponse {
+impl Default for StepStatusResponse {
 	fn default() -> Self {
 		Self::Status200(Default::default())
 	}
 }
-// Request type for viewer_view
+// Request type for step_upload_url
 #[derive(Debug)]
-pub struct ViewerViewRequest {
-	pub sha256: String,
+pub struct StepUploadUrlRequest {
+	pub uuid: String,
 	pub request: axum::http::Request<axum::body::Body>,
 }
-impl AsRef<axum::http::Request<axum::body::Body>> for ViewerViewRequest {
+impl AsRef<axum::http::Request<axum::body::Body>> for StepUploadUrlRequest {
 	fn as_ref(&self) -> &axum::http::Request<axum::body::Body> {
 		&self.request
 	}
 }
-// Response type for viewer_view
+// Response type for step_upload_url
 #[derive(Debug)]
-pub enum ViewerViewResponse {
-	Status200(Vec<u8>),
+pub enum StepUploadUrlResponse {
+	Status200(String),
 	Raw(axum::response::Response), // Variant for custom responses
 }
-impl Default for ViewerViewResponse {
+impl Default for StepUploadUrlResponse {
 	fn default() -> Self {
 		Self::Status200(Default::default())
 	}
-}
-
-#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
-pub struct FileExists {
-	pub r#exists: bool,
-	pub r#expiresAt: Option<chrono::DateTime<chrono::Utc>>,
-	pub r#uploadUrl: Option<String>,
 }
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -224,6 +217,13 @@ pub struct UnionShapeNode {
 	pub r#b: Box<ShapeNode>,
 }
 
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct PathsStepUuidStatusGetResponses200ContentApplicationJsonSchema {
+	pub r#content_hash: Option<String>,
+	pub r#message: String,
+	pub r#progress: i32,
+}
+
 use axum;
 use axum::extract::FromRequest;
 
@@ -278,24 +278,24 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(
 	);
 	let i = instance.clone();
 	let router = router.route(
-		"/step/{sha256}",
+		"/step/{uuid}/status",
 		axum::routing::get(
 			|path: axum::extract::Path<HashMap<String, String>>,
 			 query: axum::extract::Query<HashMap<String, String>>,
 			 header: axum::http::HeaderMap,
 			 request: axum::http::Request<axum::body::Body>| async move {
 				let (parts, body) = request.into_parts();
-				let ret = S::step_exists(
+				let ret = S::step_status(
 					i.as_ref(),
-					StepExistsRequest {
-						r#sha256: {
-							let v = path.get("sha256").and_then(|v| v.parse().ok());
+					StepStatusRequest {
+						r#uuid: {
+							let v = path.get("uuid").and_then(|v| v.parse().ok());
 							match v {
 								Some(v) => v,
 								None => {
 									return text_response(
 										axum::http::StatusCode::from_u16(400).unwrap(),
-										format!("parse error: sha256 in path={:?}", path),
+										format!("parse error: uuid in path={:?}", path),
 									);
 								}
 							}
@@ -305,38 +305,38 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(
 				)
 				.await;
 				match ret {
-					StepExistsResponse::Status200(v) => axum::response::Response::builder()
+					StepStatusResponse::Status200(v) => axum::response::Response::builder()
 						.status(axum::http::StatusCode::from_u16(200).unwrap())
 						.header(axum::http::header::CONTENT_TYPE, "application/json")
 						.body(axum::body::Body::from(
 							serde_json::to_vec_pretty(&v).expect("error serialize response json"),
 						))
 						.unwrap(),
-					StepExistsResponse::Raw(v) => v,
+					StepStatusResponse::Raw(v) => v,
 				}
 			},
 		),
 	);
 	let i = instance.clone();
 	let router = router.route(
-		"/view",
-		axum::routing::get(
+		"/step/{uuid}/upload",
+		axum::routing::post(
 			|path: axum::extract::Path<HashMap<String, String>>,
 			 query: axum::extract::Query<HashMap<String, String>>,
 			 header: axum::http::HeaderMap,
 			 request: axum::http::Request<axum::body::Body>| async move {
 				let (parts, body) = request.into_parts();
-				let ret = S::viewer_view(
+				let ret = S::step_upload_url(
 					i.as_ref(),
-					ViewerViewRequest {
-						r#sha256: {
-							let v = query.get("sha256").and_then(|v| v.parse().ok());
+					StepUploadUrlRequest {
+						r#uuid: {
+							let v = path.get("uuid").and_then(|v| v.parse().ok());
 							match v {
 								Some(v) => v,
 								None => {
 									return text_response(
 										axum::http::StatusCode::from_u16(400).unwrap(),
-										format!("parse error: sha256 in query={:?}", query),
+										format!("parse error: uuid in path={:?}", path),
 									);
 								}
 							}
@@ -346,18 +346,18 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(
 				)
 				.await;
 				match ret {
-					ViewerViewResponse::Status200(v) => axum::response::Response::builder()
+					StepUploadUrlResponse::Status200(v) => axum::response::Response::builder()
 						.status(axum::http::StatusCode::from_u16(200).unwrap())
-						.header(axum::http::header::CONTENT_TYPE, "model/gltf-binary")
+						.header(axum::http::header::CONTENT_TYPE, "text/plain")
 						.body(axum::body::Body::from(v))
 						.unwrap(),
-					ViewerViewResponse::Raw(v) => v,
+					StepUploadUrlResponse::Raw(v) => v,
 				}
 			},
 		),
 	);
 	let router = router.route("/openapi.json", axum::routing::get(|| async move{
-			r###"{"components":{"schemas":{"FileExists":{"properties":{"exists":{"type":"boolean"},"expiresAt":{"format":"date-time","type":"string"},"uploadUrl":{"type":"string"}},"required":["exists"],"type":"object"},"IntersectNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン共通部分 (BRepAlgoAPI_Common)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["intersect"],"type":"string"}},"required":["op","a","b"],"type":"object"},"NumberOrExpr":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"RotateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"回転","properties":{"axis":{"description":"回転軸ベクトル [ax, ay, az]","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"deg":{"allOf":[{"$ref":"#/components/schemas/NumberOrExpr"}],"description":"回転角度 (度)"},"op":{"enum":["rotate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","axis","deg"],"type":"object"},"ScaleNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"一様拡大縮小","properties":{"factor":{"$ref":"#/components/schemas/NumberOrExpr"},"op":{"enum":["scale"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","factor"],"type":"object"},"ShapeNode":{"anyOf":[{"$ref":"#/components/schemas/StepNode"},{"$ref":"#/components/schemas/UnionShapeNode"},{"$ref":"#/components/schemas/IntersectNode"},{"$ref":"#/components/schemas/SubtractNode"},{"$ref":"#/components/schemas/ScaleNode"},{"$ref":"#/components/schemas/TranslateNode"},{"$ref":"#/components/schemas/RotateNode"},{"$ref":"#/components/schemas/StretchNode"}],"description":"★ここが主役：discriminated union を “ShapeNode” として定義\nこれが OpenAPI で oneOf + discriminator になりやすい"},"ShapeNodeBase":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"StepNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"STEPファイルの読み込み","properties":{"content_hash":{"description":"キャッシュ無効化用コンテンツハッシュ \"sha256:\u003chex64\u003e\"","type":"string"},"op":{"enum":["step"],"type":"string"},"path":{"description":"STEPファイルのパス (S3キー等)","type":"string"}},"required":["op","path"],"type":"object"},"StretchNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"伸縮: 切断面で形状を分割して指定方向に伸ばす","properties":{"cut":{"description":"切断面の座標 [cx, cy, cz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"delta":{"description":"各軸方向の伸縮量 [dx, dy, dz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"op":{"enum":["stretch"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","cut","delta"],"type":"object"},"SubtractNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["subtract"],"type":"string"}},"required":["op","a","b"],"type":"object"},"TranslateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"平行移動","properties":{"op":{"enum":["translate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"},"xyz":{"description":"移動量 [x, y, z] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"}},"required":["op","shape","xyz"],"type":"object"},"UnionShapeNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン合体 (BRepAlgoAPI_Fuse)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["union"],"type":"string"}},"required":["op","a","b"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/shape":{"post":{"description":"ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す","operationId":"Shape_compute","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ShapeNode"}}},"required":true},"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}},"/step/{sha256}":{"get":{"operationId":"Step_exists","parameters":[{"in":"path","name":"sha256","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/FileExists"}}},"description":"The request has succeeded."}}}},"/view":{"get":{"operationId":"Viewer_view","parameters":[{"explode":false,"in":"query","name":"sha256","required":true,"schema":{"type":"string"},"style":"form"}],"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"/api","variables":{}}]}"###
+			r###"{"components":{"schemas":{"IntersectNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン共通部分 (BRepAlgoAPI_Common)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["intersect"],"type":"string"}},"required":["op","a","b"],"type":"object"},"NumberOrExpr":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"RotateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"回転","properties":{"axis":{"description":"回転軸ベクトル [ax, ay, az]","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"deg":{"allOf":[{"$ref":"#/components/schemas/NumberOrExpr"}],"description":"回転角度 (度)"},"op":{"enum":["rotate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","axis","deg"],"type":"object"},"ScaleNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"一様拡大縮小","properties":{"factor":{"$ref":"#/components/schemas/NumberOrExpr"},"op":{"enum":["scale"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","factor"],"type":"object"},"ShapeNode":{"anyOf":[{"$ref":"#/components/schemas/StepNode"},{"$ref":"#/components/schemas/UnionShapeNode"},{"$ref":"#/components/schemas/IntersectNode"},{"$ref":"#/components/schemas/SubtractNode"},{"$ref":"#/components/schemas/ScaleNode"},{"$ref":"#/components/schemas/TranslateNode"},{"$ref":"#/components/schemas/RotateNode"},{"$ref":"#/components/schemas/StretchNode"}],"description":"★ここが主役：discriminated union を “ShapeNode” として定義\nこれが OpenAPI で oneOf + discriminator になりやすい"},"ShapeNodeBase":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"StepNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"STEPファイルの読み込み","properties":{"content_hash":{"description":"キャッシュ無効化用コンテンツハッシュ \"sha256:\u003chex64\u003e\"","type":"string"},"op":{"enum":["step"],"type":"string"},"path":{"description":"STEPファイルのパス (S3キー等)","type":"string"}},"required":["op","path"],"type":"object"},"StretchNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"伸縮: 切断面で形状を分割して指定方向に伸ばす","properties":{"cut":{"description":"切断面の座標 [cx, cy, cz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"delta":{"description":"各軸方向の伸縮量 [dx, dy, dz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"op":{"enum":["stretch"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","cut","delta"],"type":"object"},"SubtractNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["subtract"],"type":"string"}},"required":["op","a","b"],"type":"object"},"TranslateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"平行移動","properties":{"op":{"enum":["translate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"},"xyz":{"description":"移動量 [x, y, z] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"}},"required":["op","shape","xyz"],"type":"object"},"UnionShapeNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン合体 (BRepAlgoAPI_Fuse)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["union"],"type":"string"}},"required":["op","a","b"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/shape":{"post":{"description":"ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す","operationId":"Shape_compute","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ShapeNode"}}},"required":true},"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}},"/step/{uuid}/status":{"get":{"operationId":"Step_status","parameters":[{"in":"path","name":"uuid","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"properties":{"content_hash":{"type":"string"},"message":{"type":"string"},"progress":{"format":"int32","type":"integer"}},"required":["progress","message"],"type":"object"}}},"description":"The request has succeeded."}}}},"/step/{uuid}/upload":{"post":{"operationId":"Step_upload_url","parameters":[{"in":"path","name":"uuid","required":true,"schema":{"type":"string"},"style":"simple"}],"responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"/api","variables":{}}]}"###
 		}))
 		.route("/ui", axum::routing::get(|| async move{
 			axum::response::Html(r###"
@@ -406,10 +406,10 @@ impl ApiInterface for TestServer {
 	// Implement required methods here
 	// POST /shape
 	// async fn shape_compute(&self, _req: ShapeComputeRequest) -> ShapeComputeResponse{Default::default()}
-	// GET /step/{sha256}
-	// async fn step_exists(&self, _req: StepExistsRequest) -> StepExistsResponse{Default::default()}
-	// GET /view
-	// async fn viewer_view(&self, _req: ViewerViewRequest) -> ViewerViewResponse{Default::default()}
+	// GET /step/{uuid}/status
+	// async fn step_status(&self, _req: StepStatusRequest) -> StepStatusResponse{Default::default()}
+	// POST /step/{uuid}/upload
+	// async fn step_upload_url(&self, _req: StepUploadUrlRequest) -> StepUploadUrlResponse{Default::default()}
 }
 
 /// Estimates the origin URL (scheme://host) from an HTTP request

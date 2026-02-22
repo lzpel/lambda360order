@@ -36,12 +36,12 @@
         }
       }
     },
-    "/step/{sha256}": {
+    "/step/{uuid}/status": {
       "get": {
-        "operationId": "Step_exists",
+        "operationId": "Step_status",
         "parameters": [
           {
-            "name": "sha256",
+            "name": "uuid",
             "in": "path",
             "required": true,
             "schema": {
@@ -55,7 +55,23 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileExists"
+                  "type": "object",
+                  "properties": {
+                    "progress": {
+                      "type": "integer",
+                      "format": "int32"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "content_hash": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "progress",
+                    "message"
+                  ]
                 }
               }
             }
@@ -63,28 +79,26 @@
         }
       }
     },
-    "/view": {
-      "get": {
-        "operationId": "Viewer_view",
+    "/step/{uuid}/upload": {
+      "post": {
+        "operationId": "Step_upload_url",
         "parameters": [
           {
-            "name": "sha256",
-            "in": "query",
+            "name": "uuid",
+            "in": "path",
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "explode": false
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "The request has succeeded.",
             "content": {
-              "model/gltf-binary": {
+              "text/plain": {
                 "schema": {
-                  "type": "string",
-                  "format": "binary"
+                  "type": "string"
                 }
               }
             }
@@ -95,24 +109,6 @@
   },
   "components": {
     "schemas": {
-      "FileExists": {
-        "type": "object",
-        "required": [
-          "exists"
-        ],
-        "properties": {
-          "exists": {
-            "type": "boolean"
-          },
-          "uploadUrl": {
-            "type": "string"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "IntersectNode": {
         "type": "object",
         "required": [

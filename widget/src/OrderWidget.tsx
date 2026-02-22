@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Lambda360View, ModelData } from 'lambda360view';
+import { Lambda360View } from 'lambda360view';
 
 type Material = 'SUS304' | 'Aluminium' | 'Steel' | 'Brass';
 type ShapeType = 'Plate' | 'Sheet' | 'Angle' | 'Channel';
@@ -10,7 +10,7 @@ interface OrderWidgetProps {
 }
 
 export default function OrderWidget({ modelUrl }: OrderWidgetProps) {
-  const [model, setModel] = useState<ModelData | null>(null);
+  const [model, setModel] = useState<ArrayBuffer | null>(null);
   const [material, setMaterial] = useState<Material>('SUS304');
   const [shape, setShape] = useState<ShapeType>('Plate');
   const [quantity, setQuantity] = useState<number>(1);
@@ -23,21 +23,10 @@ export default function OrderWidget({ modelUrl }: OrderWidgetProps) {
     fetch(modelUrl)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch model');
-        return res.json();
+        return res.arrayBuffer();
       })
-      .then(data => {
-        const modelData = data as ModelData;
-        if (modelData.parts) {
-          modelData.parts.forEach((part: any) => {
-            if (part.shape) {
-              part.shape.vertices = new Float32Array(part.shape.vertices);
-              part.shape.normals = new Float32Array(part.shape.normals);
-              part.shape.triangles = new Uint32Array(part.shape.triangles);
-              part.shape.edges = new Float32Array(part.shape.edges);
-            }
-          });
-        }
-        setModel(modelData);
+      .then(buf => {
+        setModel(buf);
         setLoading(false);
       })
       .catch(err => {
