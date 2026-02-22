@@ -1,10 +1,7 @@
 use crate::openapi::*;
 use crate::shape::{cached_shape, collect_breps};
-use crate::step_to_brep::step_to_brep;
+use crate::step_to_brep::step_pipeline;
 use ngoni;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
 
 pub struct Server {
 	bucket_temp: ngoni::s3::S3Storage,
@@ -38,45 +35,96 @@ impl ApiInterface for Server {
 		))
 	}
 
-	async fn step_execute(&self, req: StepExecuteRequest) -> StepExecuteResponse {
-		let h = &req.content_hash;
-		match step_execute_inner(
-			(format!("{h}.step"), self.bucket_temp.clone()),
-			(format!("{h}.brep"), self.bucket_main.clone()),
-			(format!("{h}.log"), self.bucket_temp.clone()),
-		)
-		.await
-		{
-			Ok(()) => StepExecuteResponse::Status204,
-			Err(msg) => StepExecuteResponse::Status500(msg),
-		}
-	}
-
-	async fn step_status(&self, req: StepStatusRequest) -> StepStatusResponse {
-		let key_log = format!("{}.log", req.content_hash);
-		let Ok((_, data)) = self.bucket_temp.read(&key_log).await else {
-			return StepStatusResponse::Status404;
-		};
-		match serde_json::from_slice::<StepStatusBody>(&data) {
-			Ok(body) => StepStatusResponse::Status200(body),
-			Err(_) => StepStatusResponse::Status404,
-		}
-	}
-
-	async fn step_upload_url(&self, req: StepUploadUrlRequest) -> StepUploadUrlResponse {
-		let key = format!("{}.step", req.content_hash);
+	async fn step_upload_url(&self, _req: StepUploadUrlRequest) -> StepUploadUrlResponse {
+		let id = uuid::Uuid::now_v7();
+		let key = format!("{id}.step");
 		match self
 			.bucket_temp
 			.presign_write_url(&key, std::time::Duration::from_secs(3600))
 			.await
 		{
-			Ok(url) => StepUploadUrlResponse::Status200(url),
+			Ok(url) => StepUploadUrlResponse::Status200(UploadUrlBody { id, url }),
 			Err(e) => StepUploadUrlResponse::Raw(
 				axum::response::Response::builder()
 					.status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
 					.body(axum::body::Body::from(format!("{e:?}")))
 					.unwrap(),
 			),
+		}
+	}
+
+	async fn step_test(&self, req: StepTestRequest) -> StepTestResponse {
+		macro_rules! err {
+			($msg:expr) => {
+				return StepTestResponse::Status500($msg.to_string())
+			};
+		}
+
+		// 1. upload_url
+		let StepUploadUrlResponse::Status200(UploadUrlBody { id, url }) = self
+			.step_upload_url(StepUploadUrlRequest {
+				request: axum::http::Request::new(axum::body::Body::empty()),
+			})
+			.await
+		else {
+			err!("upload_url 失敗");
+		};
+
+		// 2. presigned URL へ PUT
+		if let Err(e) = reqwest::Client::new().put(&url).body(req.body).send().await {
+			err!(format!("S3アップロード失敗: {e:?}"));
+		}
+
+		// 3. execute
+		let StepExecuteResponse::Status200(content_hash) = self
+			.step_execute(StepExecuteRequest {
+				id,
+				request: axum::http::Request::new(axum::body::Body::empty()),
+			})
+			.await
+		else {
+			err!("execute 失敗");
+		};
+
+		// 4. status 確認
+		let StepStatusResponse::Status200(status) = self
+			.step_status(StepStatusRequest {
+				id,
+				request: axum::http::Request::new(axum::body::Body::empty()),
+			})
+			.await
+		else {
+			err!("status 取得失敗");
+		};
+
+		if status.progress != 100 {
+			err!(format!("異常終了: progress={}", status.progress));
+		}
+
+		StepTestResponse::Status200(content_hash)
+	}
+
+	async fn step_execute(&self, req: StepExecuteRequest) -> StepExecuteResponse {
+		match step_pipeline(
+			&req.id.to_string(),
+			self.bucket_temp.clone(),
+			self.bucket_main.clone(),
+		)
+		.await
+		{
+			Ok(content_hash) => StepExecuteResponse::Status200(content_hash),
+			Err(msg) => StepExecuteResponse::Status500(msg),
+		}
+	}
+
+	async fn step_status(&self, req: StepStatusRequest) -> StepStatusResponse {
+		let key_log = format!("{}.log", req.id);
+		let Ok((_, data)) = self.bucket_temp.read(&key_log).await else {
+			return StepStatusResponse::Status404;
+		};
+		match serde_json::from_slice::<StepStatusBody>(&data) {
+			Ok(body) => StepStatusResponse::Status200(body),
+			Err(_) => StepStatusResponse::Status404,
 		}
 	}
 
@@ -110,75 +158,83 @@ impl ApiInterface for Server {
 	}
 }
 
-type FileInBucket = (String, ngoni::s3::S3Storage);
+#[cfg(test)]
+mod tests {
 
-async fn step_execute_inner(
-	key_step: FileInBucket,
-	key_brep: FileInBucket,
-	key_log: FileInBucket,
-) -> Result<(), String> {
-	let (step_key, bucket_src) = key_step;
-	let (brep_key, bucket_dst) = key_brep;
-	let (log_key, bucket_log) = key_log;
-	let content_hash = step_key
-		.strip_suffix(".step")
-		.unwrap_or(&step_key)
-		.to_string();
-	let progress=async move |p: u32, msg: String| {
-		if let Ok(json) = serde_json::to_string(&StepStatusBody {
-			timestamp: std::time::SystemTime::now()
-				.duration_since(std::time::UNIX_EPOCH)
-				.unwrap_or_default()
-				.as_secs() as i64,
-			progress: p as i32,
-			message: msg,
-		}){
-			let bucket = bucket_log.clone();
-			let key = log_key.clone();
-			let _ = bucket.write_bytes(&key, json.into_bytes()).await;
+	fn online_url() -> String {
+		std::env::var("ONLINE_URL").unwrap_or("https://dfrujiq0byx89.cloudfront.net".to_string())
+	}
+
+	/// make test-online で実行: cargo test -p api -- test_online_step_pipeline --include-ignored
+	#[tokio::test]
+	#[ignore]
+	async fn test_online_step_pipeline() {
+		let client = reqwest::Client::new();
+		let base = online_url();
+
+		// 1. アップロード URL 取得
+		let resp: serde_json::Value = client
+			.post(format!("{base}/api/step/upload"))
+			.send()
+			.await
+			.expect("upload URL 取得失敗")
+			.json()
+			.await
+			.expect("upload URL レスポンス JSON パース失敗");
+		let id = resp["id"].as_str().expect("id が文字列でない").to_string();
+		let url = resp["url"]
+			.as_str()
+			.expect("url が文字列でない")
+			.to_string();
+		println!("id: {id}");
+
+		// 2. STEPファイルをアップロード
+		let step_data =
+			std::fs::read("../public/PA-001-DF7.STEP").expect("STEPファイルが見つかりません");
+		client
+			.put(&url)
+			.body(step_data)
+			.send()
+			.await
+			.expect("STEPファイルアップロード失敗");
+
+		// 3. execute と status ポーリングを並走
+		let exec_client = client.clone();
+		let exec_url = format!("{base}/api/step/{id}/execute");
+		let exec_task = tokio::spawn(async move {
+			println!("[execute] 開始");
+			let result = exec_client.post(&exec_url).send().await;
+			match result {
+				Ok(resp) => {
+					let status = resp.status();
+					let body = resp.text().await.unwrap_or_default();
+					println!("[execute] {} body={:?}", status, body);
+				}
+				Err(e) => println!("[execute] エラー: {e:?}"),
+			}
+		});
+
+		// 4. status ポーリング
+		println!("[status] ポーリング開始");
+		loop {
+			tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+			let resp = client
+				.get(format!("{base}/api/step/{id}/status"))
+				.send()
+				.await
+				.expect("status リクエスト失敗");
+			let http_status = resp.status();
+			let body = resp.text().await.unwrap_or_default();
+			println!("[status] {} body={}", http_status, body);
+			if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
+				let progress = json["progress"].as_i64().unwrap_or(0);
+				if progress >= 100 {
+					assert_eq!(progress, 100, "変換失敗: progress={progress}");
+					break;
+				}
+			}
 		}
-	};
-	progress(1, "ダウンロード中".to_string()).await;
-	let (_, step_data) = bucket_src
-		.read(&step_key)
-		.await
-		.map_err(|e| format!("ダウンロード失敗: {e:?}"))?;
-	progress(10, "STEP変換中".to_string()).await;
-	let progress_arc: Arc<
-		dyn Fn(u32, String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
-	> = {
-		let progress_cloned=progress.clone();
-		Arc::new(move |p: u32, msg: String| {
-			let progress_cloned2=progress_cloned.clone();
-			Box::pin(async move { progress_cloned2(p, msg).await })
-		})
-	};
-	let brep_data = {
-		step_to_brep(step_data.clone(), content_hash, move |p, msg| {
-			progress_arc(p, msg)
-		})
-		.await
-		.map_err(|e| format!("STEP変換失敗: {e:?}"))?
-	};
-	progress(90, "アップロード中".to_string()).await;
-	let (r_step, r_brep) = tokio::join!(
-		bucket_dst.write(
-			&step_key,
-			step_data,
-			Some("application/step".to_string()),
-			None,
-			None
-		),
-		bucket_dst.write(
-			&brep_key,
-			brep_data,
-			Some("application/octet-stream".to_string()),
-			None,
-			None
-		),
-	);
-	r_step.map_err(|e| format!("STEPアップロード失敗: {e:?}"))?;
-	r_brep.map_err(|e| format!("BRepアップロード失敗: {e:?}"))?;
-	progress(100, "完了".to_string()).await;
-	Ok(())
+
+		exec_task.await.unwrap();
+	}
 }

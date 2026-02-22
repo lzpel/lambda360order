@@ -18,18 +18,24 @@ namespace Lambda360;
 // レスポンステンプレート
 // ---------------------------------------------------------------------------
 
-model Response<code extends numeric> {
+@format("uuid")
+scalar UUID extends string;
+
+model Response<code extends numeric, Body> {
 	@statusCode statusCode: code;
-}
-model ResponseWithBody<code extends numeric, Body> extends Response<code> {
 	@body body: Body;
 }
-model TextResponse is ResponseWithBody<200, string>;
-model NoContentResponse is Response<204>;
-model BadRequestResponse is ResponseWithBody<400, string>;
-model ForbiddenResponse is Response<403>;
-model NotFoundResponse is Response<404>;
-model ErrorResponse is ResponseWithBody<500, string>;
+
+model EmptyResponse<code extends numeric> {
+	@statusCode statusCode: code;
+}
+
+model TextResponse is Response<200, string>;
+model NoContentResponse is EmptyResponse<204>;
+model BadRequestResponse is Response<400, string>;
+model ForbiddenResponse is EmptyResponse<403>;
+model NotFoundResponse is EmptyResponse<404>;
+model ErrorResponse is Response<500, string>;
 
 // ---------------------------------------------------------------------------
 // Step API で使うボディ型
@@ -39,6 +45,11 @@ model StepStatusBody {
   timestamp: int64;
   progress: int32;
   message: string;
+}
+
+model UploadUrlBody {
+  id: UUID;
+  url: string;
 }
 
 /**
@@ -54,22 +65,32 @@ op version(): TextResponse;
 @route("/step")
 namespace Step {
   /**
-   * STEPファイルのSHA256ハッシュを content_hash として渡し、アップロード用のURLを取得します。
+   * アップロード用のURLとIDを取得します。
    * フロントエンドはこのURLに対して実際のファイルをアップロードします。
    */
-  @route("/{content_hash}/upload")
+  @route("/upload")
   @post
-  op upload_url(@path content_hash: string): TextResponse;
+  op upload_url(): Response<200, UploadUrlBody>;
 
   /**
-   * 指定した content_hash のファイルの変換処理（STEP -> BREP）を実行します。
+   * ローカルテスト用（--features debug 時のみ有効）：
+   * ファイルを受け取り、upload_url → S3アップロード → execute → status確認 の
+   * 一連のフローを実行してcontent_hashを返します。
+   */
+  @route("/test")
+  @post
+  op test(@body body: bytes): TextResponse | ErrorResponse;
+
+  /**
+   * 指定した ID のファイルの変換処理（STEP -> BREP）を実行します。
    * ダウンロード・変換・アップロードがすべて完了したときに 200 を返します。
    * 失敗した場合は 500 とエラーメッセージを返します。
-   * 進捗は処理中も /step/{content_hash}/status で確認できます。
+   * 進捗は処理中も /step/{id}/status で確認できます。
+   * レスポンスボディは変換後ファイルの content_hash です。
    */
-  @route("/{content_hash}/execute")
+  @route("/{id}/execute")
   @post
-  op execute(@path content_hash: string): NoContentResponse | ErrorResponse;
+  op execute(@path id: UUID): TextResponse | ErrorResponse;
 
   /**
    * 変換処理の最新進捗を返します。
@@ -77,9 +98,9 @@ namespace Step {
    * - progress 101以上: 異常終了
    * 変換がまだ開始されていない場合は 404 を返します。
    */
-  @route("/{content_hash}/status")
+  @route("/{id}/status")
   @get
-  op status(@path content_hash: string): StepStatusBody | NotFoundResponse;
+  op status(@path id: UUID): StepStatusBody | NotFoundResponse;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +187,7 @@ model StretchNode extends ShapeNodeBase {
 }
 
 /**
- * ★ここが主役：discriminated union を “ShapeNode” として定義
+ * ★ここが主役：discriminated union を "ShapeNode" として定義
  * これが OpenAPI で oneOf + discriminator になりやすい
  */
 union ShapeNode {

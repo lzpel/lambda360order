@@ -6,8 +6,7 @@ fn main() {
 	// 1. Load OpenAPI spec
 	let spec_json = fs::read_to_string("../public/openapi.json")
 		.expect("Failed to read ../public/openapi.json");
-	let spec: openapiv3::OpenAPI =
-		serde_json::from_str(&spec_json).expect("Failed to parse OpenAPI spec");
+	let spec = serde_json::from_str(&spec_json).expect("Failed to parse OpenAPI spec");
 
 	// 2. Build environment
 	let env = mandolin::environment(spec).expect("Failed to build mandolin environment");

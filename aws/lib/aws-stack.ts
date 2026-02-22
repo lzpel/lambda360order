@@ -18,7 +18,7 @@ export class AwsStack extends cdk.Stack {
 			path.join(__dirname, "..", "..", "api"),
 			{
 				timeout: cdk.Duration.minutes(15),
-				memorySize: 256,
+				memorySize: 2048,
 			},
 			{
 				cors: {

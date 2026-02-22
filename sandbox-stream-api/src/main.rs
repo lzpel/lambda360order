@@ -3,10 +3,10 @@
 #[allow(unused_imports)]
 #[allow(non_snake_case)]
 mod openapi;
-mod server;
+mod stream_server;
 
 use crate::openapi::{axum_router, print_axum_router};
-use crate::server::Server;
+use crate::stream_server::Server;
 
 #[tokio::main]
 async fn main() {

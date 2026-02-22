@@ -36,23 +36,89 @@
         }
       }
     },
-    "/step/{content_hash}/execute": {
+    "/step/test": {
+      "post": {
+        "operationId": "Step_test",
+        "description": "ローカルテスト用（--features debug 時のみ有効）：\nファイルを受け取り、upload_url → S3アップロード → execute → status確認 の\n一連のフローを実行してcontent_hashを返します。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/step/upload": {
+      "post": {
+        "operationId": "Step_upload_url",
+        "description": "アップロード用のURLとIDを取得します。\nフロントエンドはこのURLに対して実際のファイルをアップロードします。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadUrlBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/step/{id}/execute": {
       "post": {
         "operationId": "Step_execute",
-        "description": "指定した content_hash のファイルの変換処理（STEP -> BREP）を実行します。\nダウンロード・変換・アップロードがすべて完了したときに 200 を返します。\n失敗した場合は 500 とエラーメッセージを返します。\n進捗は処理中も /step/{content_hash}/status で確認できます。",
+        "description": "指定した ID のファイルの変換処理（STEP -> BREP）を実行します。\nダウンロード・変換・アップロードがすべて完了したときに 200 を返します。\n失敗した場合は 500 とエラーメッセージを返します。\n進捗は処理中も /step/{id}/status で確認できます。\nレスポンスボディは変換後ファイルの content_hash です。",
         "parameters": [
           {
-            "name": "content_hash",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/components/schemas/UUID"
             }
           }
         ],
         "responses": {
-          "204": {
-            "description": "There is no content to send for this request, but the headers may be useful. "
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "500": {
             "description": "Server error",
@@ -67,17 +133,17 @@
         }
       }
     },
-    "/step/{content_hash}/status": {
+    "/step/{id}/status": {
       "get": {
         "operationId": "Step_status",
         "description": "変換処理の最新進捗を返します。\n- progress 100: 正常終了\n- progress 101以上: 異常終了\n変換がまだ開始されていない場合は 404 を返します。",
         "parameters": [
           {
-            "name": "content_hash",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/components/schemas/UUID"
             }
           }
         ],
@@ -94,34 +160,6 @@
           },
           "404": {
             "description": "The server cannot find the requested resource."
-          }
-        }
-      }
-    },
-    "/step/{content_hash}/upload": {
-      "post": {
-        "operationId": "Step_upload_url",
-        "description": "STEPファイルのSHA256ハッシュを content_hash として渡し、アップロード用のURLを取得します。\nフロントエンドはこのURLに対して実際のファイルをアップロードします。",
-        "parameters": [
-          {
-            "name": "content_hash",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The request has succeeded.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
           }
         }
       }
@@ -157,12 +195,7 @@
           "body": {
             "type": "string"
           }
-        },
-        "allOf": [
-          {
-            "type": "object"
-          }
-        ]
+        }
       },
       "ForbiddenResponse": {
         "type": "object"
@@ -194,6 +227,9 @@
           }
         ],
         "description": "ブーリアン共通部分 (BRepAlgoAPI_Common)"
+      },
+      "NoContentResponse": {
+        "type": "object"
       },
       "NumberOrExpr": {
         "anyOf": [
@@ -303,7 +339,7 @@
             "$ref": "#/components/schemas/StretchNode"
           }
         ],
-        "description": "★ここが主役：discriminated union を “ShapeNode” として定義\nこれが OpenAPI で oneOf + discriminator になりやすい"
+        "description": "★ここが主役：discriminated union を \"ShapeNode\" として定義\nこれが OpenAPI で oneOf + discriminator になりやすい"
       },
       "ShapeNodeBase": {
         "type": "object",
@@ -467,6 +503,10 @@
         ],
         "description": "平行移動"
       },
+      "UUID": {
+        "type": "string",
+        "format": "uuid"
+      },
       "UnionShapeNode": {
         "type": "object",
         "required": [
@@ -494,6 +534,21 @@
           }
         ],
         "description": "ブーリアン合体 (BRepAlgoAPI_Fuse)"
+      },
+      "UploadUrlBody": {
+        "type": "object",
+        "required": [
+          "id",
+          "url"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
       }
     }
   },
