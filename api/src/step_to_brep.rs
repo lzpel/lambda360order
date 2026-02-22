@@ -85,7 +85,7 @@ pub async fn step_pipeline(
 				iv.tick().await;
 				tick += 1;
 				let elapsed = start.elapsed().as_secs();
-				let p = (20 + tick * 2).min(69);
+				let p = (20 + tick * 1).min(69);
 				progress(p, format!("STEPファイル読み込み中 ({elapsed}秒)")).await;
 			}
 		}

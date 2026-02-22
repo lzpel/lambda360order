@@ -12,3 +12,5 @@ run: # 開発用のサーバー起動コマンド フォアグラウンド実行
 deploy: # 本番用のサーバー起動コマンド バックグラウンド実行されます
 	echo ${NEXT_PUBLIC_REPO}
 	bash -c "$${MAKE_RECURSIVE}"
+deploy-aws: generate deploy
+	make -C aws deploy

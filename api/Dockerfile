@@ -4,7 +4,7 @@ FROM base AS builder
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN dnf install -y gcc g++ cmake
 COPY . .
-RUN sh -c ". $HOME/.cargo/env && cargo build --release"
+RUN sh -c ". $HOME/.cargo/env && cargo build --release --features frontend"
 RUN find target/release -maxdepth 1 -type f -executable | xargs -IX install -D X -t target/bin/
 # runner
 FROM base AS runner

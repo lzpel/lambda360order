@@ -9,6 +9,7 @@ run:
 
 deploy:
 	npm run build
+	rm -rf ../$(OUT_FRONTEND_DIR) && mkdir -p ../$(OUT_FRONTEND_DIR) && cp -r ./out/. ../$(OUT_FRONTEND_DIR)
 
 dev:
 	npm run dev
