@@ -1,6 +1,6 @@
 MAKE_RECURSIVE_DIRS := openapi widget frontend api # aws
-OUT_FRONTEND_DIR := api/out
-SECRET_DIR_AGE := secret secret.age
+PATH_OUT_FRONTEND := api/out
+URL_ORIGIN := https://dfrujiq0byx89.cloudfront.net
 define MAKE_RECURSIVE
 	time printf '%s\n' $(MAKE_RECURSIVE_DIRS) | xargs -IX sh -c '$(MAKE) -C X $@ || exit 255'
 endef
