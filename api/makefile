@@ -5,13 +5,12 @@ CONTENT_PATH=../public/PA-001-DF7.STEP
 generate:
 	cargo run --example generate
 	cargo fmt
-	cargo test -p api -- generate_glb --include-ignored
 
 run:
 	cargo run
 
 test:
-	cargo test shape
+	cargo test
 
 test-online:
 	ONLINE_URL=$(ONLINE_URL) cargo test -p api -- test_online_step_pipeline --include-ignored --nocapture
