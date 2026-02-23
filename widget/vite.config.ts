@@ -1,20 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tsconfigPaths from 'vite-tsconfig-paths';
 import { resolve } from 'path';
-import wasm from "vite-plugin-wasm";
-import topLevelAwait from "vite-plugin-top-level-await";
 
 export default defineConfig({
   plugins: [
     react(),
-    wasm(),
-    topLevelAwait(),
+    tsconfigPaths(),
   ],
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, '.'),
-    },
-  },
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
