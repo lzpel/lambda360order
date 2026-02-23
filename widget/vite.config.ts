@@ -10,6 +10,11 @@ export default defineConfig({
     wasm(),
     topLevelAwait(),
   ],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, '.'),
+    },
+  },
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
   },

@@ -8,7 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
-    "lambda360view": "^0.1.7",
+    "lambda360view": "^0.1.8",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
