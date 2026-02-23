@@ -4,7 +4,7 @@ generate:
 run:
 	# No run step for aws
 
-deploy: check-docker
+deploy: generate check-docker
 	npm run cdk -- deploy --require-approval never
 
 check-docker:
