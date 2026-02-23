@@ -1,5 +1,5 @@
 use crate::openapi::*;
-use crate::shape::{cached_shape, collect_breps};
+use crate::shape::{cached_shape, collect_shape};
 use crate::step_to_brep::step_pipeline;
 use ngoni;
 
@@ -132,9 +132,9 @@ impl ApiInterface for Server {
 		let node = req.body;
 
 		// StepNode.pathはフロントエンドがsha256に置換済み。
-		// そのsha256をキーにbucket_mainからbrepを収集する。
-		let breps = match collect_breps(&node, &self.bucket_main).await {
-			Ok(b) => b,
+		// そのsha256をキーにbucket_mainからbrepを収集してShapeに変換する。
+		let shapes = match collect_shape(&node, &self.bucket_main).await {
+			Ok(s) => s,
 			Err(e) => {
 				return ShapeComputeResponse::Raw(
 					axum::response::Response::builder()
@@ -146,7 +146,7 @@ impl ApiInterface for Server {
 		};
 
 		// ShapeNodeのJSONをsha256にしてキャッシュ確認 → なければshape()で計算して保存
-		match cached_shape(&node, &breps, &self.bucket_main).await {
+		match cached_shape(&node, shapes, &self.bucket_main).await {
 			Ok(glb) => ShapeComputeResponse::Status200(glb),
 			Err(e) => ShapeComputeResponse::Raw(
 				axum::response::Response::builder()

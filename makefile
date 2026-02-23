@@ -8,7 +8,7 @@ export
 generate: # 前処理を行います。開発・本番問わず実行前に叩いてください
 	bash -c "$${MAKE_RECURSIVE}"
 run: # 開発用のサーバー起動コマンド フォアグラウンド実行されます Ctrl+Cで止まります
-	rebab --frontend 127.0.0.1:8000 --rule "prefix=/api,port=7996,command=make -C api run" --rule "port=7997,command=make -C frontend run"
+	rebab --frontend 127.0.0.1:8000 --rule "prefix=/api,port=7996,command=make -C api run" --rule "port=7995,command=make -C frontend run"
 deploy: # 本番用のサーバー起動コマンド バックグラウンド実行されます
 	echo ${NEXT_PUBLIC_REPO}
 	bash -c "$${MAKE_RECURSIVE}"
