@@ -2,8 +2,7 @@
 
 import { useState, useRef, useCallback, DragEvent } from 'react';
 import Link from 'next/link';
-
-const API = '/api';
+import { stepUploadUrl, stepExecute, stepStatus } from '@/out/client';
 
 async function sha256hex(file: File): Promise<string> {
   const buf = await file.arrayBuffer();
@@ -57,11 +56,10 @@ export default function UploadPage() {
       let uploadId: string;
       let uploadUrl: string;
       try {
-        const res = await fetch(`${API}/step/upload`, { method: 'POST' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const body = await res.json();
-        uploadId = body.id;
-        uploadUrl = body.url;
+        const { data, error } = await stepUploadUrl();
+        if (error || !data) throw new Error(String(error));
+        uploadId = data.id;
+        uploadUrl = data.url;
       } catch (e) {
         updateEntry(entryId, { sha256, status: 'error', message: `アップロードURL取得失敗: ${e}` });
         return;
@@ -99,12 +97,10 @@ export default function UploadPage() {
 
       // 4. execute 開始（長時間ジョブ、完了まで待つ）
       updateEntry(entryId, { sha256, status: 'executing', message: '変換開始中...', progress: 0 });
-      const execPromise = fetch(`${API}/step/${uploadId}/execute`, { method: 'POST' }).then(
-        async (res) => {
-          if (res.ok) return await res.text();
-          throw new Error(await res.text());
-        }
-      );
+      const execPromise = stepExecute({ path: { id: uploadId } }).then(({ data, error }) => {
+        if (error) throw new Error(String(error));
+        return data as string;
+      });
 
       // 5. status ポーリング
       // 大きなファイルでは execute が 504 タイムアウトしても Lambda 側の処理は継続するため、
@@ -113,9 +109,8 @@ export default function UploadPage() {
       while (!done) {
         await new Promise((r) => setTimeout(r, 2000));
         try {
-          const res = await fetch(`${API}/step/${uploadId}/status`);
-          if (res.ok) {
-            const s: { message: string; progress: number; timestamp: number } = await res.json();
+          const { data: s } = await stepStatus({ path: { id: uploadId } });
+          if (s) {
             updateEntry(entryId, {
               sha256,
               status: 'executing',
@@ -366,12 +361,6 @@ function FileCard({ entry }: { entry: FileEntry }) {
         </div>
       )}
 
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-      `}</style>
     </div>
   );
 }

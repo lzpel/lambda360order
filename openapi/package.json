@@ -3,11 +3,15 @@
     "version": "0.1.0",
     "type": "module",
     "scripts": {
-        "tsp": "tsp"
+        "tsp": "tsp",
+        "openapi-ts": "openapi-ts"
     },
     "dependencies": {
         "@typespec/compiler": "latest",
         "@typespec/http": "latest",
         "@typespec/openapi3": "latest"
+    },
+    "devDependencies": {
+        "@hey-api/openapi-ts": "latest"
     }
 }

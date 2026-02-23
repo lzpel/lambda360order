@@ -1,7 +1,7 @@
 
 generate:
 	npm install
-	npx @hey-api/openapi-ts
+	X=out/client && rm -rf $$X && mkdir -p $$X && cp -rf ../$$X/. $$X # out/clientを丸ごとコピー
 	rm -rf public && cp -r ../public public && echo "*" | install -D /dev/stdin public/.gitignore
 
 run:

@@ -4,7 +4,7 @@ use std::io::Write;
 
 fn main() {
 	// 1. Load OpenAPI spec
-	let f = std::fs::File::open("../public/openapi.json").expect("Failed to open OpenAPI spec");
+	let f = std::fs::File::open("../out/openapi.json").expect("Failed to open OpenAPI spec");
 	let spec = mandolin::openapi_load(f).expect("Failed to load OpenAPI spec");
 
 	// 2. Build environment
