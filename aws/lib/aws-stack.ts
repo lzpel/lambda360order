@@ -54,9 +54,17 @@ export class AwsStack extends cdk.Stack {
 
 		// S3バケットや
 		const bucket_temp = new s3.Bucket(this, 'temp', {
-			lifecycleRules: [{
-				expiration: cdk.Duration.days(1),
-			}],
+			lifecycleRules: [
+				{
+					// デフォルト: 180日で削除
+					expiration: cdk.Duration.days(180),
+				},
+				{
+					// "_/" プレフィックス以下は1日で削除
+					prefix: '_/',
+					expiration: cdk.Duration.days(1),
+				},
+			],
 			cors: [{
 				allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST, s3.HttpMethods.HEAD],
 				allowedOrigins: ['*'],

@@ -76,10 +76,10 @@ pub fn shape_stretch(
 mod tests {
 	use super::*;
 	use crate::shape_to_glb::create_glb;
+	use glam::DVec3;
 	use opencascade::primitives::Shape;
 
-	const TEST_STEP_PATH: &str =
-		"../public/LAMBDA360-BOX-89192879c0b7d7418e1ffcd3a15427829342dd052098696cf82c100a053b42a9.step";
+	const TEST_STEP_PATH: &str = "../public/LAMBDA360-BOX-89192879c0b7d7418e1ffcd3a15427829342dd052098696cf82c100a053b42a9.step";
 
 	fn load_step() -> Shape {
 		Shape::read_step(TEST_STEP_PATH).expect("STEPファイルが見つかりません")
@@ -92,7 +92,7 @@ mod tests {
 
 	/// メッシュの bounding box 中心を返す
 	fn bbox_center(mesh: &opencascade::mesh::Mesh) -> DVec3 {
-		let (mut min, mut max) = (DVec3::MAX, DVec3::MIN);
+		let (mut min, mut max) = (DVec3::splat(f64::MAX), DVec3::splat(f64::MIN));
 		for v in &mesh.vertices {
 			min = min.min(*v);
 			max = max.max(*v);
@@ -174,7 +174,6 @@ mod tests {
 	/// LAMBDA360-BOX STEP を読み込み → ストレッチ → GLB 書き出し
 	/// cargo test -- generate_stretched_glb --ignored --nocapture
 	#[test]
-	#[ignore]
 	fn generate_stretched_glb() {
 		let shape = load_step();
 		let pre_mesh = shape.mesh_with_tolerance(0.1).expect("mesh failed");
@@ -196,7 +195,7 @@ mod tests {
 		);
 
 		let glb = create_glb(&mesh, &stretched).expect("GLB生成失敗");
-		let out_path = "../public/LAMBDA360-BOX-stretched.glb";
+		let out_path = "../out/LAMBDA360-BOX-stretched.glb";
 		std::fs::write(out_path, &glb).expect("GLB書き込み失敗");
 		println!("生成完了: {} ({} bytes)", out_path, glb.len());
 	}
