@@ -155,7 +155,6 @@ pub async fn cached_shape(
 	node: &ShapeNode,
 	shapes: HashMap<String, Shape>,
 	bucket_temp: &ngoni::s3::S3Storage,
-	bucket_main: &ngoni::s3::S3Storage,
 ) -> Result<Vec<u8>, String> {
 	// descriptionを除いたShapeNodeのJSONをRFC 8785 (JCS) に従いsha256でキャッシュキーを生成
 	let mut node_for_hash = node.clone();

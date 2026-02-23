@@ -146,7 +146,7 @@ impl ApiInterface for Server {
 		};
 
 		// ShapeNodeのJSONをsha256にしてキャッシュ確認 → なければshape()で計算して保存
-		match cached_shape(&node, shapes, &self.bucket_temp, &self.bucket_main).await {
+		match cached_shape(&node, shapes, &self.bucket_temp).await {
 			Ok(glb) => ShapeComputeResponse::Status200(glb),
 			Err(e) => ShapeComputeResponse::Raw(
 				axum::response::Response::builder()

@@ -174,7 +174,6 @@ mod tests {
 	/// LAMBDA360-BOX STEP を読み込み → ストレッチ → GLB 書き出し
 	/// cargo test -- generate_stretched_glb --ignored --nocapture
 	#[test]
-	#[ignore]
 	fn generate_stretched_glb() {
 		let shape = load_step();
 		let pre_mesh = shape.mesh_with_tolerance(0.1).expect("mesh failed");
@@ -196,7 +195,7 @@ mod tests {
 		);
 
 		let glb = create_glb(&mesh, &stretched).expect("GLB生成失敗");
-		let out_path = "../public/LAMBDA360-BOX-stretched.glb";
+		let out_path = "../out/LAMBDA360-BOX-stretched.glb";
 		std::fs::write(out_path, &glb).expect("GLB書き込み失敗");
 		println!("生成完了: {} ({} bytes)", out_path, glb.len());
 	}
