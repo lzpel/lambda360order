@@ -69,6 +69,7 @@ export default function ShapeStretchPage() {
         <Lambda360Shape
           key={JSON.stringify(shape)}
           shape={shape}
+          origin_url="https://dfrujiq0byx89.cloudfront.net"
         />
       </div>
 
