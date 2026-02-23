@@ -40,7 +40,7 @@ pub async fn collect_breps(
 fn collect_keys(node: &ShapeNode, keys: &mut std::collections::HashSet<String>) {
 	match node {
 		ShapeNode::Step(step) => {
-			keys.insert(step.path.clone());
+			keys.insert(step.content_hash.clone());
 		}
 		ShapeNode::Union(n) => {
 			collect_keys(&n.a, keys);
@@ -69,6 +69,40 @@ fn collect_keys(node: &ShapeNode, keys: &mut std::collections::HashSet<String>) 
 	}
 }
 
+/// ShapeNodeを再帰的に走査してStepNodeのdescriptionをNoneに設定する（同期）
+/// cached_shape()でdescriptionをキャッシュキーに含めないために使用する
+fn strip_descriptions(node: &mut ShapeNode) {
+	match node {
+		ShapeNode::Step(step) => {
+			step.description = None;
+		}
+		ShapeNode::Union(n) => {
+			strip_descriptions(&mut n.a);
+			strip_descriptions(&mut n.b);
+		}
+		ShapeNode::Intersect(n) => {
+			strip_descriptions(&mut n.a);
+			strip_descriptions(&mut n.b);
+		}
+		ShapeNode::Subtract(n) => {
+			strip_descriptions(&mut n.a);
+			strip_descriptions(&mut n.b);
+		}
+		ShapeNode::Scale(n) => {
+			strip_descriptions(&mut n.shape);
+		}
+		ShapeNode::Translate(n) => {
+			strip_descriptions(&mut n.shape);
+		}
+		ShapeNode::Rotate(n) => {
+			strip_descriptions(&mut n.shape);
+		}
+		ShapeNode::Stretch(n) => {
+			strip_descriptions(&mut n.shape);
+		}
+	}
+}
+
 /// ShapeNodeのJSONをsha256にしてbucket_memoをチェックし、キャッシュヒットならGLBを返す。
 /// キャッシュミスの場合はshape()でGLBを計算して保存してから返す。
 pub async fn cached_shape(
@@ -76,8 +110,11 @@ pub async fn cached_shape(
 	breps: &HashMap<String, Vec<u8>>,
 	bucket_main: &ngoni::s3::S3Storage,
 ) -> Result<Vec<u8>, String> {
-	// ShapeNodeのJSONをRFC 8785 (JCS) に従いsha256でキャッシュキーを生成
-	let json_str = serde_json_canonicalizer::to_string(node).map_err(|e| e.to_string())?;
+	// descriptionを除いたShapeNodeのJSONをRFC 8785 (JCS) に従いsha256でキャッシュキーを生成
+	let mut node_for_hash = node.clone();
+	strip_descriptions(&mut node_for_hash);
+	let json_str =
+		serde_json_canonicalizer::to_string(&node_for_hash).map_err(|e| e.to_string())?;
 	let hash = {
 		let mut h = Sha256::new();
 		h.update(json_str.as_bytes());
@@ -111,7 +148,7 @@ pub async fn cached_shape(
 fn shape(node: &ShapeNode, breps: &HashMap<String, Vec<u8>>) -> Result<Vec<u8>, String> {
 	match node {
 		ShapeNode::Step(step) => {
-			let sha256 = &step.path;
+			let sha256 = &step.content_hash;
 			let brep_data = breps
 				.get(sha256)
 				.ok_or_else(|| format!("BRep data for '{}' not found in collected map", sha256))?;
@@ -403,8 +440,8 @@ mod tests {
 
 	fn step_node(key: &str) -> ShapeNode {
 		ShapeNode::Step(StepNode {
-			path: key.to_string(),
-			content_hash: None,
+			content_hash: key.to_string(),
+			description: None,
 		})
 	}
 

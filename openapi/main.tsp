@@ -124,10 +124,10 @@ model ShapeNodeBase {
 /** STEPファイルの読み込み */
 model StepNode extends ShapeNodeBase {
   `op`: "step";
-  /** STEPファイルのパス (S3キー等) */
-  path: string;
-  /** キャッシュ無効化用コンテンツハッシュ "sha256:<hex64>" */
-  content_hash?: string;
+  /** STEPファイルのsha256ハッシュ値 (hex64) */
+  content_hash: string;
+  /** 表示用メモ（GLBキャッシュキーに影響しない） */
+  description?: string;
 }
 
 /** ブーリアン合体 (BRepAlgoAPI_Fuse) */
