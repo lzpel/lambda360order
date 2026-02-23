@@ -17,8 +17,8 @@ pub async fn step_pipeline(
 	bucket_temp: S3Storage,
 	bucket_main: S3Storage,
 ) -> Result<String, String> {
-	let step_key = format!("{uuid}.step");
-	let log_key = format!("{uuid}.log");
+	let step_key = format!("_/{uuid}.step");
+	let log_key = format!("_/{uuid}.log");
 
 	let progress: Arc<
 		dyn Fn(u32, String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
@@ -129,7 +129,7 @@ pub async fn step_pipeline(
 	// アップロード
 	progress(90, "アップロード中".to_string()).await;
 	let step_dst_key = format!("{content_hash}.step");
-	let brep_key = format!("{content_hash}.brep");
+	let brep_key = format!("{content_hash}");
 	let (r_step, r_brep) = tokio::join!(
 		bucket_main.write(
 			&step_dst_key,

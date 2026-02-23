@@ -37,7 +37,7 @@ impl ApiInterface for Server {
 
 	async fn step_upload_url(&self, _req: StepUploadUrlRequest) -> StepUploadUrlResponse {
 		let id = uuid::Uuid::now_v7();
-		let key = format!("{id}.step");
+		let key = format!("_/{id}.step");
 		match self
 			.bucket_temp
 			.presign_write_url(&key, std::time::Duration::from_secs(3600))
@@ -118,7 +118,7 @@ impl ApiInterface for Server {
 	}
 
 	async fn step_status(&self, req: StepStatusRequest) -> StepStatusResponse {
-		let key_log = format!("{}.log", req.id);
+		let key_log = format!("_/{}.log", req.id);
 		let Ok((_, data)) = self.bucket_temp.read(&key_log).await else {
 			return StepStatusResponse::Status404;
 		};
@@ -146,7 +146,7 @@ impl ApiInterface for Server {
 		};
 
 		// ShapeNodeのJSONをsha256にしてキャッシュ確認 → なければshape()で計算して保存
-		match cached_shape(&node, &breps, &self.bucket_main).await {
+		match cached_shape(&node, &breps, &self.bucket_temp, &self.bucket_main).await {
 			Ok(glb) => ShapeComputeResponse::Status200(glb),
 			Err(e) => ShapeComputeResponse::Raw(
 				axum::response::Response::builder()
