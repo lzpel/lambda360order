@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Lambda360Shape from '@widget/Lambda360Shape';
 import type { ShapeNode } from '@/out/client';
 
-const STEP_HASH = '89192879c0b7d7418e1ffcd3a15427829342dd052098696cf82c100a053b42a9';
+const STEP_HASH = 'd6cb2eb2d6e0d802095ea1eda691cf9a3e9bf3394301a0d148f53e55f0f97951';
 
 const baseShape: ShapeNode = {
   op: 'step',

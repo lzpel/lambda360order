@@ -56,6 +56,8 @@ make run
 make deploy-aws   # generate + deploy + AWS CDK deploy
 ```
 
+デプロイ先: https://dfrujiq0byx89.cloudfront.net
+
 ## 主要な型: ShapeNode
 
 形状の演算ツリーを表すdiscriminated union。`openapi/main.tsp` で定義。
