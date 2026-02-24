@@ -1,5 +1,8 @@
 # shape_stretch フィラー生成バグ修正
 
+![フィラーが断面押し出しではなく元形状のコピーになっているバグ](https://github.com/user-attachments/assets/99a1a764-3773-4fe1-954c-2c3fe3771cf8)
+![元形状](https://github.com/user-attachments/assets/d0f2fa74-11c9-41eb-85fb-2094a0692698)
+
 ## 概要
 
 `shape_stretch` 関数の「フィラー（ギャップ充填）」生成にバグがあり、切断面の押し出しではなく元形状のスライスコピーになっていた問題を修正した。
