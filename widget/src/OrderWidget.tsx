@@ -62,8 +62,7 @@ export default function OrderWidget({ modelUrl }: OrderWidgetProps) {
             showEdges={true}
             showViewMenu={true}
             orthographic={true}
-            width="100%"
-            height="100%"
+            style={{ width: '100%', height: '100%' }}
           />
         )}
       </div>
