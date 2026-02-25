@@ -57,112 +57,54 @@ export default function Lambda360Shape({ shape, origin_url = '', upAxis = 'Y' }:
     };
   }, [shape, origin_url]);
 
+  let centerNode = null;
+  if (error) {
+    centerNode = (
+      <div style={{
+        padding: '12px 20px',
+        backgroundColor: '#fff',
+        borderRadius: '6px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        fontSize: '14px',
+        color: '#cc0000',
+        border: '1px solid #ffcccc',
+      }}>
+        Error: {error}
+      </div>
+    );
+  } else if (loading) {
+    centerNode = (
+      <div style={{
+        padding: '8px 16px',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderRadius: '6px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        fontSize: '14px',
+        color: '#666',
+      }}>
+        {model ? 'Updating Model...' : 'Loading...'}
+      </div>
+    );
+  } else if (!model) {
+    centerNode = (
+      <div style={{ color: '#999' }}>
+        No model
+      </div>
+    );
+  }
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {/* Always render Lambda360View if we have a model */}
-      {model && (
-        <Lambda360View
-          model={model}
-          backgroundColor="#f5f5f5"
-          edgeColor="#333333"
-          showEdges={true}
-          showViewMenu={true}
-          orthographic={true}
-          preserveCamera={true}
-          upAxis={upAxis}
-          style={{ width: '100%', height: '100%' }}
-        />
-      )}
-
-      {/* Loading overlay - shown on top of the existing view */}
-      {loading && !model && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#f5f5f5',
-          pointerEvents: 'none',
-          zIndex: 10,
-        }}>
-          <div style={{
-            padding: '8px 16px',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            borderRadius: '6px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            fontSize: '14px',
-            color: '#666',
-          }}>
-            Loading...
-          </div>
-        </div>
-      )}
-
-      {/* Subtle loading indicator when updating an existing model */}
-      {loading && model && (
-        <div style={{
-          position: 'absolute',
-          top: '16px',
-          right: '16px',
-          padding: '8px 16px',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '6px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          fontSize: '14px',
-          color: '#666',
-          pointerEvents: 'none',
-          zIndex: 10,
-        }}>
-          Updating Model...
-        </div>
-      )}
-
-      {/* Error overlay */}
-      {error && !loading && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: model ? 'rgba(245, 245, 245, 0.7)' : '#f5f5f5',
-          zIndex: 10,
-        }}>
-          <div style={{
-            padding: '12px 20px',
-            backgroundColor: '#fff',
-            borderRadius: '6px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            fontSize: '14px',
-            color: '#cc0000',
-            border: '1px solid #ffcccc',
-          }}>
-            Error: {error}
-          </div>
-        </div>
-      )}
-
-      {/* Initial state with no model and not loading */}
-      {!model && !loading && !error && (
-        <div style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#f5f5f5',
-          color: '#999',
-        }}>
-          No model
-        </div>
-      )}
-    </div>
+    <Lambda360View
+      model={model}
+      center={centerNode}
+      backgroundColor="#f5f5f5"
+      edgeColor="#333333"
+      showEdges={true}
+      showViewMenu={true}
+      orthographic={true}
+      preserveCamera={true}
+      upAxis={upAxis}
+      style={{ width: '100%', height: '100%', position: 'relative' }}
+    />
   );
 }

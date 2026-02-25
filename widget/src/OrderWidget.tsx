@@ -46,25 +46,24 @@ export default function OrderWidget({ modelUrl }: OrderWidgetProps) {
     }}>
       {/* Left: 3D Viewer */}
       <div style={{ flex: 1, position: 'relative', backgroundColor: '#f5f5f5', borderRight: '1px solid #ddd' }}>
-        {loading && (
-          <div style={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            color: '#666',
-          }}>
-            Loading 3D Model...
-          </div>
-        )}
-        {model && (
-          <Lambda360View
-            model={model}
-            backgroundColor="#f5f5f5"
-            edgeColor="#333333"
-            showEdges={true}
-            showViewMenu={true}
-            orthographic={true}
-            style={{ width: '100%', height: '100%' }}
-          />
-        )}
+        <Lambda360View
+          model={model}
+          center={
+            loading ? (
+              <div style={{
+                color: '#666',
+              }}>
+                Loading 3D Model...
+              </div>
+            ) : null
+          }
+          backgroundColor="#f5f5f5"
+          edgeColor="#333333"
+          showEdges={true}
+          showViewMenu={true}
+          orthographic={true}
+          style={{ width: '100%', height: '100%' }}
+        />
       </div>
 
       {/* Right: Order Form */}
