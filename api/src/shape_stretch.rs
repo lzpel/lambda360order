@@ -49,10 +49,6 @@ fn extrude_cut_faces(half: &Shape, axis: usize, cut_coord: f64, delta: f64) -> S
 /// 1軸分の切断+移動+ギャップ充填を行う。
 /// axis: 0=X, 1=Y, 2=Z
 fn stretch_axis(shape: Shape, axis: usize, cut_coord: f64, delta: f64) -> Shape {
-	if delta <= 1e-10 {
-		return shape;
-	}
-
 	let (corner_min, corner_max) = match axis {
 		0 => (dvec3(cut_coord, -BIG, -BIG), dvec3(BIG, BIG, BIG)),
 		1 => (dvec3(-BIG, cut_coord, -BIG), dvec3(BIG, BIG, BIG)),
@@ -95,19 +91,27 @@ pub fn shape_stretch(
 	dy: f64,
 	dz: f64,
 ) -> Result<Shape, String> {
-	let dx = dx.max(0.0);
-	let dy = dy.max(0.0);
-	let dz = dz.max(0.0);
-
-	let shape_new = stretch_axis(shape, 0, cx, dx);
-	let shape_new = stretch_axis(shape_new, 1, cy, dy);
-	let shape_new = stretch_axis(shape_new, 2, cz, dz);
-
-	let did_stretch = dx > 1e-10 || dy > 1e-10 || dz > 1e-10;
-	Ok(if did_stretch {
-		shape_new.clean()
+	let eps = 1e-10;
+	let shape = if dx > eps {
+		stretch_axis(shape, 0, cx, dx.max(0.0))
 	} else {
-		shape_new
+		shape
+	};
+	let shape = if dy > eps {
+		stretch_axis(shape, 1, cy, dy.max(0.0))
+	} else {
+		shape
+	};
+	let shape = if dz > eps {
+		stretch_axis(shape, 2, cz, dz.max(0.0))
+	} else {
+		shape
+	};
+	Ok(if dx > eps || dy > eps || dz > eps {
+		println!("cleaned");
+		shape.clean()
+	} else {
+		shape
 	})
 }
 

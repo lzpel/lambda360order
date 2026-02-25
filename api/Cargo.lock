@@ -1730,7 +1730,7 @@ dependencies = [
 [[package]]
 name = "kicad-parser"
 version = "0.1.0"
-source = "git+https://github.com/lzpel/opencascade-rs#09b2614613a88e21267be656992212c87df96805"
+source = "git+https://github.com/bschwind/opencascade-rs?rev=09b2614#09b2614613a88e21267be656992212c87df96805"
 dependencies = [
  "sexp",
  "thiserror 1.0.69",
@@ -1967,7 +1967,7 @@ dependencies = [
 [[package]]
 name = "opencascade"
 version = "0.2.0"
-source = "git+https://github.com/lzpel/opencascade-rs#09b2614613a88e21267be656992212c87df96805"
+source = "git+https://github.com/bschwind/opencascade-rs?rev=09b2614#09b2614613a88e21267be656992212c87df96805"
 dependencies = [
  "cxx",
  "glam",
@@ -1979,7 +1979,7 @@ dependencies = [
 [[package]]
 name = "opencascade-sys"
 version = "0.2.0"
-source = "git+https://github.com/lzpel/opencascade-rs#09b2614613a88e21267be656992212c87df96805"
+source = "git+https://github.com/bschwind/opencascade-rs?rev=09b2614#09b2614613a88e21267be656992212c87df96805"
 dependencies = [
  "cmake",
  "cxx",
