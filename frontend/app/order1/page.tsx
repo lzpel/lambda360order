@@ -1,0 +1,35 @@
+"use client";
+
+import Lambda360Order, { OrderConfig } from '@widget/Lambda360Order';
+
+export default function Order1Page() {
+    const orderConfig: OrderConfig = {
+        params: {
+            width: { type: "number", label: "幅", unit: "mm", default: 300, constraint: { min: 200, max: 600, step: 10 } },
+            depth: { type: "number", label: "奥行き", unit: "mm", default: 400, constraint: { min: 200, max: 800, step: 10 } },
+            height: { type: "number", label: "高さ", unit: "mm", default: 150, constraint: { enum: [100, 150, 200] } },
+            color: { type: "color", label: "色", default: "#cccccc", constraint: { enum: ["#cccccc", "#336699", "#993333"] } }
+        },
+        shape: {
+            op: "subtract",
+            a: {
+                op: "stretch",
+                shape: { op: "step", content_hash: "box-base.step" },
+                cut: [100, 100, 75],
+                delta: ["$width - 200", "$depth - 200", "$height - 150"]
+            },
+            b: {
+                op: "translate",
+                shape: { op: "step", content_hash: "mounting-hole.step" },
+                xyz: ["$width * 0.5", "$depth - 20", 0]
+            }
+        },
+        color: "$color"
+    };
+
+    return (
+        <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0 }}>
+            <Lambda360Order order={orderConfig} />
+        </div>
+    );
+}
