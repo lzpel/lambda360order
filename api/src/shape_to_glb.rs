@@ -264,7 +264,7 @@ mod tests {
 	const TEST_KEY: &str = "test_brep_sha256";
 
 	fn load_test_shape() -> Shape {
-		Shape::read_brep(TEST_BREP_PATH)
+		Shape::read_brep_text(TEST_BREP_PATH)
 			.or_else(|_| Shape::read_brep_bin(TEST_BREP_PATH))
 			.expect("テスト用BRepファイルが見つかりません: ../public/PA-001-DF7.brep")
 	}

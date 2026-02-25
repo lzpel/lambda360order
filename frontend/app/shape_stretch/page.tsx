@@ -66,7 +66,7 @@ export default function ShapeStretchPage() {
     <div style={{ display: 'flex', width: '100vw', height: '100vh', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       {/* 左: 3Dビュー */}
       <div style={{ flex: 1, position: 'relative' }}>
-        <Lambda360Shape shape={shape} origin_url={'https://dfrujiq0byx89.cloudfront.net'} upAxis="Z" />
+        <Lambda360Shape shape={shape} upAxis="Z" />
       </div>
 
       {/* 右: フォーム */}

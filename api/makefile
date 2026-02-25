@@ -12,6 +12,10 @@ run:
 test:
 	cargo test
 
+clean:
+	rm -rf target Cargo.lock
+	cargo clean
+
 test-online:
 	ONLINE_URL=$(ONLINE_URL) cargo test -p api -- test_online_step_pipeline --include-ignored --nocapture
 

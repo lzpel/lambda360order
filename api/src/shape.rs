@@ -62,7 +62,7 @@ pub async fn collect_shape(
 				let tmp = std::env::temp_dir().join(format!("{}.brep", sha256));
 				std::fs::write(&tmp, &data)
 					.map_err(|e| format!("Failed to write temp brep: {}", e))?;
-				let shape = Shape::read_brep(&tmp)
+				let shape = Shape::read_brep_text(&tmp)
 					.or_else(|_| Shape::read_brep_bin(&tmp))
 					.map_err(|e| format!("Failed to read brep '{}': {:?}", sha256, e));
 				let _ = std::fs::remove_file(&tmp);
@@ -148,6 +148,17 @@ fn strip_descriptions(node: &mut ShapeNode) {
 	}
 }
 
+/// ShapeNodeからキャッシュのキーとなるSHA256ハッシュを計算する
+fn compute_shape_hash(node: &ShapeNode) -> Result<String, String> {
+	let mut node_for_hash = node.clone();
+	strip_descriptions(&mut node_for_hash);
+	let json_str =
+		serde_json_canonicalizer::to_string(&node_for_hash).map_err(|e| e.to_string())?;
+	let mut h = Sha256::new();
+	h.update(json_str.as_bytes());
+	Ok(format!("{:x}", h.finalize()))
+}
+
 /// ShapeNodeのJSONをsha256にしてbucket_memoをチェックし、キャッシュヒットならGLBを返す。
 /// キャッシュミスの場合はshape()でGLBを計算して保存してから返す。
 /// shapes は eval_shape で消費される（cache miss 時のみ）。
@@ -156,22 +167,15 @@ pub async fn cached_shape(
 	shapes: HashMap<String, Shape>,
 	bucket_temp: &ngoni::s3::S3Storage,
 ) -> Result<Vec<u8>, String> {
-	// descriptionを除いたShapeNodeのJSONをRFC 8785 (JCS) に従いsha256でキャッシュキーを生成
-	let mut node_for_hash = node.clone();
-	strip_descriptions(&mut node_for_hash);
-	let json_str =
-		serde_json_canonicalizer::to_string(&node_for_hash).map_err(|e| e.to_string())?;
-	let hash = {
-		let mut h = Sha256::new();
-		h.update(json_str.as_bytes());
-		format!("{:x}", h.finalize())
-	};
-	let glb_key = format!("{}", hash);
+	let glb_key = compute_shape_hash(node)?;
 
 	// キャッシュヒットチェック（bucket_temp）
+	// TODO: 現在は検証のためキャッシュ取得をバイパスし、常に再計算する
+	/*
 	if let Ok((_meta, data)) = bucket_temp.read(&glb_key).await {
 		return Ok(data);
 	}
+	*/
 
 	// キャッシュミス: shape()でGLBを計算してbucket_tempに保存
 	let glb = shape(node, shapes)?;
