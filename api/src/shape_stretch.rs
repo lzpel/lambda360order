@@ -99,11 +99,16 @@ pub fn shape_stretch(
 	let dy = dy.max(0.0);
 	let dz = dz.max(0.0);
 
-	let shape = stretch_axis(shape, 0, cx, dx);
-	let shape = stretch_axis(shape, 1, cy, dy);
-	let shape = stretch_axis(shape, 2, cz, dz);
+	let shape_new = stretch_axis(shape, 0, cx, dx);
+	let shape_new = stretch_axis(shape_new, 1, cy, dy);
+	let shape_new = stretch_axis(shape_new, 2, cz, dz);
 
-	Ok(shape)
+	let did_stretch = dx > 1e-10 || dy > 1e-10 || dz > 1e-10;
+	Ok(if did_stretch {
+		shape_new.clean()
+	} else {
+		shape_new
+	})
 }
 
 #[cfg(test)]
