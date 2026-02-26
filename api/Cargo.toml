@@ -17,7 +17,7 @@ opencascade = { git = "https://github.com/bschwind/opencascade-rs", rev = "09b26
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 tokio = { version = "1.49.0", features = ["full"] }
-ngoni = "^0.1.7"
+ngoni = { version = "^0.1.8", features = ["aws"] }
 reqwest = { version = "0.12", features = ["rustls-tls", "json"], default-features = false }
 uuid = { version = "1", features = ["v7", "serde"] }
 sha2 = "0.10"
