@@ -107,7 +107,7 @@ export default function Lambda360Order({ order }: Lambda360OrderProps) {
             overflow: 'hidden',
         }}>
             {/* Left: 3D Viewer */}
-            <div style={{ flex: 1, position: 'relative', backgroundColor: '#f5f5f5', borderRight: '1px solid #ddd' }}>
+            <div style={{ flex: 1, position: 'relative', backgroundColor: '#f5f5f5', borderRight: '1px solid #ddd', minWidth: 0, minHeight: 0 }}>
                 <Lambda360Shape shape={evaluatedShape} upAxis="Z" />
             </div>
 
