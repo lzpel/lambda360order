@@ -11,7 +11,6 @@ export default defineConfig({
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
-  publicDir: '../public',
   build: {
     lib: {
       entry: resolve(__dirname, 'src/widget-entry.tsx'),
@@ -25,6 +24,6 @@ export default defineConfig({
       },
     },
     cssCodeSplit: false,
-    outDir: 'out',
+    outDir: 'out/out', // outDirの中身はviteが空にしてしまうのでout/だとout/clientが消えてしまう、そこでネストを一段深くしている、out/outの中身はmake deployで../publicにコピーされる
   },
 });

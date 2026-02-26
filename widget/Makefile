@@ -8,7 +8,7 @@ run:
 
 deploy:
 	npm run build
-	cp out/widget.js ../public/widget.js
+	cp -r out/out/. ../public/
 
 dev:
 	npm run dev

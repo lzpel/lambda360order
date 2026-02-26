@@ -13,7 +13,7 @@ export default function Order1Page() {
         shape: {
             op: "stretch",
             shape: { op: "step", content_hash: "d6cb2eb2d6e0d802095ea1eda691cf9a3e9bf3394301a0d148f53e55f0f97951" },
-            cut: [1, 0, 0],//[100, 100, 75],
+            cut: [1, 0, 10],//[100, 100, 75],
             delta: ["$width - 200", "$depth - 200", "$height - 150"]
         },
         color: "$color"
