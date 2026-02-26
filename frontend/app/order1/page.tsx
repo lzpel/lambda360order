@@ -11,18 +11,10 @@ export default function Order1Page() {
             color: { type: "color", label: "色", default: "#cccccc", constraint: { enum: ["#cccccc", "#336699", "#993333"] } }
         },
         shape: {
-            op: "subtract",
-            a: {
-                op: "stretch",
-                shape: { op: "step", content_hash: "d6cb2eb2d6e0d802095ea1eda691cf9a3e9bf3394301a0d148f53e55f0f97951" },
-                cut: [100, 100, 75],
-                delta: ["$width - 200", "$depth - 200", "$height - 150"]
-            },
-            b: {
-                op: "translate",
-                shape: { op: "step", content_hash: "bd405c4e4cd565154134b09ed3dc350bec22d1dac86d98b390a1803a485d146b" },
-                xyz: ["$width * 0.5", "$depth - 20", 0]
-            }
+            op: "stretch",
+            shape: { op: "step", content_hash: "d6cb2eb2d6e0d802095ea1eda691cf9a3e9bf3394301a0d148f53e55f0f97951" },
+            cut: [1, 0, 0],//[100, 100, 75],
+            delta: ["$width - 200", "$depth - 200", "$height - 150"]
         },
         color: "$color"
     };
