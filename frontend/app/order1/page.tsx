@@ -28,7 +28,7 @@ export default function Order1Page() {
     };
 
     return (
-        <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0 }}>
+        <div style={{ width: '100%', height: '100%', margin: 0, padding: 0 }}>
             <Lambda360Order order={orderConfig} />
         </div>
     );

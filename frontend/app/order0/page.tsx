@@ -6,7 +6,7 @@ export default function OrderPage() {
   const modelUrl = `${prefix}/PA-001-DF7.glb`;
 
   return (
-    <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0 }}>
+    <div style={{ width: '100%', height: '100%', margin: 0, padding: 0 }}>
       <OrderWidget modelUrl={modelUrl} />
     </div>
   );

@@ -1,3 +1,4 @@
+export MSYS_NO_PATHCONV := 1
 MAKE_RECURSIVE_DIRS := openapi widget frontend api # aws
 PATH_OUT_FRONTEND := api/out
 URL_ORIGIN := https://dfrujiq0byx89.cloudfront.net
@@ -8,7 +9,8 @@ export
 generate: # 前処理を行います。開発・本番問わず実行前に叩いてください
 	bash -c "$${MAKE_RECURSIVE}"
 run: # 開発用のサーバー起動コマンド フォアグラウンド実行されます Ctrl+Cで止まります
-	rebab --frontend 127.0.0.1:8000 --rule "prefix=/api,port=7998,command=make -C api run" --rule "port=7999,command=make -C frontend run"
+	# MSYS_NO_PATHCONV=1 は gitbash で /apiがパス変換されることを防ぐことで rebab が正しく動作するようにする
+	MSYS_NO_PATHCONV=1 rebab --frontend 127.0.0.1:8000 --rule "prefix=/api,port=7998,command=make -C api run" --rule "port=7999,command=make -C frontend run"
 deploy: # 本番用のサーバー起動コマンド バックグラウンド実行されます
 	echo ${NEXT_PUBLIC_REPO}
 	bash -c "$${MAKE_RECURSIVE}"

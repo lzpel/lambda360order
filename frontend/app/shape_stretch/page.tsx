@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Lambda360Shape from '@widget/Lambda360Shape';
 import type { ShapeNode } from '@/out/client';
 
-const STEP_HASH = 'd6cb2eb2d6e0d802095ea1eda691cf9a3e9bf3394301a0d148f53e55f0f97951';
+const STEP_HASH = 'bd405c4e4cd565154134b09ed3dc350bec22d1dac86d98b390a1803a485d146b';
 
 const baseShape: ShapeNode = {
   op: 'step',
@@ -63,7 +63,7 @@ export default function ShapeStretchPage() {
   };
 
   return (
-    <div style={{ display: 'flex', width: '100vw', height: '100vh', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div style={{ display: 'flex', width: '100%', height: '100%', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       {/* 左: 3Dビュー */}
       <div style={{ flex: 1, position: 'relative' }}>
         <Lambda360Shape shape={shape} upAxis="Z" />
