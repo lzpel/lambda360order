@@ -31,7 +31,7 @@ run:
 	PATH="$(COMPILER_BIN):$$PATH" ./target/debug/api.exe
 
 test:
-	cargo test
+	PATH="$(COMPILER_BIN):$$PATH" cargo test
 
 clean:
 	rm -rf target Cargo.lock
@@ -41,11 +41,24 @@ path:
 	echo "$${PATH}"
 
 test-online:
-	ONLINE_URL=$(ONLINE_URL) cargo test -p api -- test_online_step_pipeline --include-ignored --nocapture
+	PATH="$(COMPILER_BIN):$$PATH" ONLINE_URL=$(ONLINE_URL) cargo test -p api -- test_online_step_pipeline --include-ignored --nocapture
 
 test-stretch:
-	cargo test stretch_test_1_0_10 -- --ignored --nocapture
-	cargo test stretch_known_error_case_100_100_75 -- --ignored --nocapture
+	PATH="$(COMPILER_BIN):$$PATH" cargo test stretch_test_1_0_10 -- --ignored --nocapture
+	PATH="$(COMPILER_BIN):$$PATH" cargo test stretch_known_error_case_100_100_75 -- --ignored --nocapture
+
+# deep_copy 回帰テスト（外部 STEP ファイル不要）
+# box_same_params / l_shape / cylinder_hole は通常テストに昇格済み（#[ignore] 削除）
+# direct_bool_chain / early_drop は raw C++ 動作確認用のため引き続き --ignored で実行
+bench-stretch:
+	PATH="$(COMPILER_BIN):$$PATH" cargo test bench_stretch_timing -- --ignored --nocapture
+
+test-stretch-minimal:
+	PATH="$(COMPILER_BIN):$$PATH" cargo test heap_corruption_box_same_params -- --nocapture
+	PATH="$(COMPILER_BIN):$$PATH" cargo test heap_corruption_direct_bool_chain -- --ignored --nocapture
+	PATH="$(COMPILER_BIN):$$PATH" cargo test heap_corruption_early_drop -- --ignored --nocapture
+	PATH="$(COMPILER_BIN):$$PATH" cargo test heap_corruption_l_shape -- --nocapture
+	PATH="$(COMPILER_BIN):$$PATH" cargo test heap_corruption_cylinder_hole -- --nocapture
 
 %:
 	echo "No rule to make target '$@'"

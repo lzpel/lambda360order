@@ -4,7 +4,11 @@
       "WebFetch(domain:*)",
       "Bash(*)",
       "WebFetch(domain:crates.io)",
-      "WebFetch(domain:docs.rs)"
+      "WebFetch(domain:docs.rs)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch"
     ]
   }
 }
