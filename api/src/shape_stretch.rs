@@ -243,4 +243,39 @@ mod tests {
 		std::fs::write(out_path, &glb).expect("GLB書き込み失敗");
 		println!("生成完了: {} ({} bytes)", out_path, glb.len());
 	}
+
+	/// 既知のバグ（C++レイヤーで Standard_OutOfRange 例外が発生しクラッシュする）の再現用ケース
+	/// ユーザー報告の `cut: [100, 100, 75]` などを指定するとクラッシュする想定。
+	/// テストランナーごと落ちるため、通常は実行対象から外す（ignore）。
+	/// 実行確認用コマンド: cargo test stretch_known_error_case_100_100_75 -- --ignored --nocapture
+	#[test]
+	#[ignore = "causes C++ Standard_OutOfRange abort"]
+	fn stretch_known_error_case_100_100_75() {
+		let shape = load_step();
+
+		// cut: [100, 100, 75]
+		let (cx, cy, cz) = (100.0, 100.0, 75.0);
+		// JSONの delta=["$width-200", ...] に相当する正の変位を適当に与える
+		let (dx, dy, dz) = (10.0, 10.0, 10.0);
+
+		println!("Running stretch_known_error_case_100_100_75. This might abort...");
+		let _result = shape_stretch(shape, cx, cy, cz, dx, dy, dz);
+		println!("Finished successfully? (If you see this, the bug might be fixed)");
+	}
+
+	/// [1, 0, 10] を指定した場合のテストケース
+	/// 実行確認用コマンド: cargo test stretch_test_1_0_10 -- --ignored --nocapture
+	#[test]
+	#[ignore = "for debugging"]
+	fn stretch_test_1_0_10() {
+		let shape = load_step();
+
+		// cut: [1, 0, 10]
+		let (cx, cy, cz) = (1.0, 0.0, 10.0);
+		let (dx, dy, dz) = (10.0, 0.0, 0.0);
+
+		println!("Running stretch_test_1_0_10...");
+		let _result = shape_stretch(shape, cx, cy, cz, dx, dy, dz);
+		println!("Finished successfully!");
+	}
 }

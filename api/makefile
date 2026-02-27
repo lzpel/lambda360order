@@ -43,5 +43,9 @@ path:
 test-online:
 	ONLINE_URL=$(ONLINE_URL) cargo test -p api -- test_online_step_pipeline --include-ignored --nocapture
 
+test-stretch:
+	cargo test stretch_test_1_0_10 -- --ignored --nocapture
+	cargo test stretch_known_error_case_100_100_75 -- --ignored --nocapture
+
 %:
 	echo "No rule to make target '$@'"
