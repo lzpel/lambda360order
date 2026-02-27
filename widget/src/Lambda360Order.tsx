@@ -17,77 +17,31 @@ interface ParamConfig {
 
 import type { ShapeNode } from '@/out/client';
 
-export interface OrderConfig {
+export interface Lambda360OrderProps {
     params: Record<string, ParamConfig>;
-    shape: ShapeNode;
-    color?: string;
-    pricing?: any;
+    lambda: (params: Record<string, any>) => { shape: ShapeNode; color?: string; price?: number };
 }
 
-interface Lambda360OrderProps {
-    order: OrderConfig;
-}
-
-// 簡易な式評価関数。 '$width - 200' などの文字列を params の値を用いて評価する。
-function evaluateExpression(expr: string, context: Record<string, any>): any {
-    // $var を var に置換
-    const cleanExpr = expr.replace(/\$(\w+)/g, '$1');
-    const keys = Object.keys(context);
-    const values = Object.values(context);
-    try {
-        const fn = new Function(...keys, `return ${cleanExpr};`);
-        return fn(...values);
-    } catch (e) {
-        console.warn(`Evaluation failed for expression: ${expr}`, e);
-        return expr;
-    }
-}
-
-// JSONツリー全体を再帰的にトラバースして式を評価する
-function evaluateTree(obj: any, context: Record<string, any>): any {
-    if (typeof obj === 'string') {
-        if (obj.includes('$')) {
-            return evaluateExpression(obj, context);
-        }
-        return obj;
-    }
-    if (Array.isArray(obj)) {
-        return obj.map(item => evaluateTree(item, context));
-    }
-    if (obj !== null && typeof obj === 'object') {
-        const result: any = {};
-        for (const [key, value] of Object.entries(obj)) {
-            result[key] = evaluateTree(value, context);
-        }
-        return result;
-    }
-    return obj;
-}
-
-export default function Lambda360Order({ order }: Lambda360OrderProps) {
+export default function Lambda360Order({ params: schemaParams, lambda }: Lambda360OrderProps) {
     // 初期値でstateを初期化
     const [paramValues, setParamValues] = useState<Record<string, any>>(() => {
         const initial: Record<string, any> = {};
-        for (const [key, config] of Object.entries(order.params || {})) {
+        for (const [key, config] of Object.entries(schemaParams || {})) {
             initial[key] = config.default;
         }
         return initial;
     });
 
     // stateが変更されるたびにshapeを再評価
-    const evaluatedShape = useMemo(() => {
-        let shape = evaluateTree(order.shape, paramValues);
-        // FIXME: color is not supported yet
-        // if (order.color) {
-        //     const colorValue = evaluateTree(order.color, paramValues);
-        //     shape = {
-        //         op: 'color',
-        //         color: colorValue,
-        //         shape: shape
-        //     };
-        // }
-        return shape as ShapeNode;
-    }, [order.shape, order.color, paramValues]);
+    const { shape: evaluatedShape, price } = useMemo(() => {
+        try {
+            return lambda(paramValues);
+        } catch (e) {
+            console.error("Lambda function evaluation failed:", e);
+            // フォールバック（仮として空のノードを返す）
+            return { shape: { op: "identity", shape: undefined } as unknown as ShapeNode };
+        }
+    }, [lambda, paramValues]);
 
     const handleChange = (key: string, value: any) => {
         setParamValues(prev => ({ ...prev, [key]: value }));
@@ -132,7 +86,12 @@ export default function Lambda360Order({ order }: Lambda360OrderProps) {
 
                 {/* Dynamic Form Controls */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {Object.entries(order.params || {}).map(([key, config]) => {
+                    {price !== undefined && (
+                        <div style={{ padding: '12px', backgroundColor: '#eef', borderRadius: '4px', fontWeight: 'bold', color: '#333' }}>
+                            参考価格: {price.toLocaleString()} 円
+                        </div>
+                    )}
+                    {Object.entries(schemaParams || {}).map(([key, config]) => {
                         const currentValue = paramValues[key];
 
                         return (
