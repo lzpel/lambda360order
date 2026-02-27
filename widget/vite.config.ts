@@ -14,7 +14,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, 'src/widget-entry.tsx'),
-      name: 'Lambda360Widget',
+      name: 'Lambda360',
       formats: ['iife'],
       fileName: () => 'widget.js',
     },

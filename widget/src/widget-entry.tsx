@@ -1,35 +1,27 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import OrderWidget from './OrderWidget';
-
-const DEFAULT_MODEL_URL = 'https://lzpel.github.io/lambda360order/PA-001-DF7.json';
+import Lambda360Order from './Lambda360Order';
+import type { Lambda360OrderProps } from './Lambda360Order';
 
 function mount(container: HTMLElement, options?: { modelUrl?: string }) {
-  const modelUrl = options?.modelUrl
-    ?? container.dataset.model
-    ?? DEFAULT_MODEL_URL;
+  console.warn("Lambda360.mount is deprecated. Please use Lambda360.initLambda360 instead.");
+  return null;
+}
 
+function initLambda360(selector: string | HTMLElement, options: Lambda360OrderProps) {
+  const container = typeof selector === 'string' ? document.querySelector(selector) : selector;
+  if (!container) {
+    console.error(`Lambda360: Container not found for selector '${selector}'`);
+    return null;
+  }
   const root = createRoot(container);
   root.render(
     <React.StrictMode>
-      <OrderWidget modelUrl={modelUrl} />
+      <Lambda360Order params={options.params} lambda={options.lambda} origin_url={options.origin_url || "https://dfrujiq0byx89.cloudfront.net"} />
     </React.StrictMode>
   );
   return root;
 }
 
-// Auto-mount: find containers with id or data attribute
-(function autoMount() {
-  const container = document.getElementById('lambda360-order');
-  if (container) {
-    mount(container);
-  }
-
-  // Also mount to any element with data-lambda360-order attribute
-  document.querySelectorAll<HTMLElement>('[data-lambda360-order]').forEach(el => {
-    mount(el);
-  });
-})();
-
-// Expose global API for manual mounting
-(window as any).Lambda360Order = { mount };
+// Global API
+(window as any).Lambda360 = { mount, initLambda360 };

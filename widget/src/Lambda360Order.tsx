@@ -20,9 +20,10 @@ import type { ShapeNode } from '@/out/client';
 export interface Lambda360OrderProps {
     params: Record<string, ParamConfig>;
     lambda: (params: Record<string, any>) => { shape: ShapeNode; color?: string; price?: number };
+    origin_url?: string;
 }
 
-export default function Lambda360Order({ params: schemaParams, lambda }: Lambda360OrderProps) {
+export default function Lambda360Order({ params: schemaParams, lambda, origin_url }: Lambda360OrderProps) {
     // 初期値でstateを初期化
     const [paramValues, setParamValues] = useState<Record<string, any>>(() => {
         const initial: Record<string, any> = {};
@@ -61,9 +62,18 @@ export default function Lambda360Order({ params: schemaParams, lambda }: Lambda3
             overflow: 'hidden',
         }}>
             {/* Left: 3D Viewer */}
-            <div style={{ flex: 1, position: 'relative', backgroundColor: '#f5f5f5', borderRight: '1px solid #ddd', minWidth: 0, minHeight: 0 }}>
-                <Lambda360Shape shape={evaluatedShape} upAxis="Z" />
-            </div>
+            <Lambda360Shape
+                shape={evaluatedShape}
+                backgroundColor="#f5f5f5"
+                edgeColor="#333333"
+                showEdges={true}
+                showViewMenu={true}
+                orthographic={true}
+                preserveCamera={true}
+                origin_url={origin_url}
+                upAxis="Z"
+                style={{ flex: 1, position: 'relative', backgroundColor: '#f5f5f5', borderRight: '1px solid #ddd', minWidth: 0, minHeight: 0, width: '100%', height: '100%' }}
+            />
 
             {/* Right: Order Form */}
             <div style={{

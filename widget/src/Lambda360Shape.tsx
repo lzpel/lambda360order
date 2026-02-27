@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
+import type { ComponentProps } from 'react';
 import { Lambda360View } from 'lambda360view';
 import { createClient, createConfig } from '@/out/client/client';
 import { shapeCompute } from '@/out/client';
 import type { ShapeNode } from '@/out/client';
 
-interface Lambda360ShapeProps {
+export interface Lambda360ShapeProps extends Omit<ComponentProps<typeof Lambda360View>, 'model'> {
   shape: ShapeNode;
   origin_url?: string;
-  upAxis?: 'Y' | 'Z' | '-Y' | '-Z';
 }
 
-export default function Lambda360Shape({ shape, origin_url = '', upAxis = 'Y' }: Lambda360ShapeProps) {
+export default function Lambda360Shape({ shape, origin_url = '', ...props }: Lambda360ShapeProps) {
   const [model, setModel] = useState<ArrayBuffer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,14 +97,7 @@ export default function Lambda360Shape({ shape, origin_url = '', upAxis = 'Y' }:
     <Lambda360View
       model={model}
       center={centerNode}
-      backgroundColor="#f5f5f5"
-      edgeColor="#333333"
-      showEdges={true}
-      showViewMenu={true}
-      orthographic={true}
-      preserveCamera={true}
-      upAxis={upAxis}
-      style={{ width: '100%', height: '100%', position: 'relative' }}
+      {...props}
     />
   );
 }
