@@ -8,7 +8,7 @@ run:
 
 deploy:
 	npm run build
-	cp -r out/out/. ../public/
+	install -D out/out/widget.js -t ../out/public
 
 dev:
 	npm run dev

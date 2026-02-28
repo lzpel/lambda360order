@@ -30,6 +30,9 @@ run:
 	# C:\Users\smith\mingw64\bin が先頭に来るため、正しい DLL がロードされる。
 	PATH="$(COMPILER_BIN):$$PATH" ./target/debug/api.exe
 
+deploy:
+	X=out && rm -rf $$X && mkdir -p $$X && cp -r ../frontend/$$X/. $$X 
+
 test:
 	cargo test
 

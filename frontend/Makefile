@@ -8,8 +8,8 @@ run:
 	npm run dev
 
 deploy:
+	X=public && rm -rf $$X && mkdir -p $$X && cp -r ../out/$$X/. $$X
 	npm run build
-	rm -rf ../$(PATH_OUT_FRONTEND) && mkdir -p ../$(PATH_OUT_FRONTEND) && cp -r ./out/. ../$(PATH_OUT_FRONTEND)
 
 dev:
 	npm run dev
