@@ -69,7 +69,12 @@ fn stretch_axis(shape: Shape, axis: usize, cut_coord: f64, delta: f64) -> Shape 
 	// 切断面を押し出してフィラーを生成
 	let filler = extrude_cut_faces(&part_neg, axis, cut_coord, delta);
 
-	part_neg.union(&filler).shape.union(&part_pos).shape.deep_copy()
+	part_neg
+		.union(&filler)
+		.shape
+		.union(&part_pos)
+		.shape
+		.deep_copy()
 }
 
 /// StretchNode の実装: x/y/z 軸ごとに独立した軸平行な切断+移動+ギャップ充填を行う。
@@ -250,18 +255,12 @@ mod tests {
 	/// テストランナーごと落ちるため、通常は実行対象から外す（ignore）。
 	/// 実行確認用コマンド: cargo test stretch_known_error_case_100_100_75 -- --ignored --nocapture
 	#[test]
-	#[ignore = "causes C++ Standard_OutOfRange abort"]
-	fn stretch_known_error_case_100_100_75() {
+	fn stretch_known_error_case_1_0_1() {
 		let shape = load_step();
-
-		// cut: [100, 100, 75]
-		let (cx, cy, cz) = (100.0, 100.0, 75.0);
-		// JSONの delta=["$width-200", ...] に相当する正の変位を適当に与える
-		let (dx, dy, dz) = (10.0, 10.0, 10.0);
-
-		println!("Running stretch_known_error_case_100_100_75. This might abort...");
-		let _result = shape_stretch(shape, cx, cy, cz, dx, dy, dz);
-		println!("Finished successfully? (If you see this, the bug might be fixed)");
+		let (cx, cy, cz) = (1.0, 0.0, 1.0);
+		let (dx, dy, dz) = (1.0, 1.0, 1.0);
+		println!("Running stretch_known_error_case_1_0_1. This might abort...");
+		shape_stretch(shape, cx, cy, cz, dx, dy, dz).expect("shape_stretch failed");
 	}
 
 	/// [1, 0, 10] を指定した場合のテストケース
@@ -278,92 +277,6 @@ mod tests {
 		println!("Running stretch_test_1_0_10...");
 		let _result = shape_stretch(shape, cx, cy, cz, dx, dy, dz);
 		println!("Finished successfully!");
-	}
-
-	// -------------------------------------------------------------------------
-	// BRepBuilderAPI_Copy 導入コスト見積もり用ベンチマーク
-	// -------------------------------------------------------------------------
-
-	/// shape_stretch の各ステップにかかる時間を計測する。
-	/// BRepBuilderAPI_Copy を導入した場合の追加コストは:
-	///   intersect / subtract / union ごとに 1 回 copy が走るため
-	///   「copy 1回あたりのコスト × 演算回数」が上乗せになる。
-	/// clean() の実行時間が copy の上限目安になる（copy は clean より軽い）。
-	///
-	/// cargo test bench_stretch_timing -- --ignored --nocapture
-	#[test]
-	#[ignore = "timing benchmark"]
-	fn bench_stretch_timing() {
-		use std::time::Instant;
-
-		let iterations = 5;
-
-		// --- shape_stretch 全体 ---
-		let mut total_stretch = std::time::Duration::ZERO;
-		for _ in 0..iterations {
-			let shape = load_step();
-			let t = Instant::now();
-			let _r = shape_stretch(shape, 1.0, 0.0, 10.0, 10.0, 0.0, 0.0);
-			total_stretch += t.elapsed();
-		}
-		let avg_stretch = total_stretch / iterations;
-		println!("shape_stretch 全体:      {:>8.2?} (avg over {})", avg_stretch, iterations);
-
-		// --- 個別ステップ（intersect / subtract / union / clean）---
-		// BRepBuilderAPI_Copy は union や clean と同等か軽い操作なので
-		// これらの時間が copy 1回あたりのコスト上限目安になる。
-		let big = 10_000.0_f64;
-
-		let mut total_intersect = std::time::Duration::ZERO;
-		let mut total_subtract = std::time::Duration::ZERO;
-		let mut total_union = std::time::Duration::ZERO;
-		let mut total_clean = std::time::Duration::ZERO;
-
-		for _ in 0..iterations {
-			let shape = load_step();
-			let cutter =
-				Shape::box_from_corners(dvec3(1.0, -big, -big), dvec3(big, big, big));
-
-			let t = Instant::now();
-			let pos = shape.intersect(&cutter).shape;
-			total_intersect += t.elapsed();
-
-			let t = Instant::now();
-			let neg = shape.subtract(&cutter).shape;
-			total_subtract += t.elapsed();
-
-			let filler = Shape::box_from_corners(dvec3(1.0, 0.0, 0.0), dvec3(11.0, 200.0, 100.0));
-
-			let t = Instant::now();
-			let merged = neg.union(&filler).shape.union(&pos).shape;
-			total_union += t.elapsed();
-
-			let t = Instant::now();
-			let _cleaned = merged.clean();
-			total_clean += t.elapsed();
-		}
-
-		println!(
-			"intersect:               {:>8.2?} (avg) ← copy 1回の上限目安",
-			total_intersect / iterations
-		);
-		println!(
-			"subtract:                {:>8.2?} (avg) ← copy 1回の上限目安",
-			total_subtract / iterations
-		);
-		println!(
-			"union×2:                 {:>8.2?} (avg) ← copy 1回の上限目安",
-			total_union / iterations
-		);
-		println!(
-			"clean:                   {:>8.2?} (avg) ← copy 1回の上限目安",
-			total_clean / iterations
-		);
-		println!();
-		println!("【判定基準】");
-		println!("  BRepBuilderAPI_Copy は intersect/subtract/union より軽い操作。");
-		println!("  shape_stretch では copy が最大 5〜6 回走る想定。");
-		println!("  上記の値 × 5〜6 が許容 10ms 以内なら導入コストは問題なし。");
 	}
 
 	// -------------------------------------------------------------------------
@@ -461,8 +374,7 @@ mod tests {
 	#[test]
 	fn heap_corruption_cylinder_hole() {
 		use glam::DVec3;
-		let box_shape =
-			Shape::box_from_corners(dvec3(0.0, 0.0, 0.0), dvec3(100.0, 80.0, 60.0));
+		let box_shape = Shape::box_from_corners(dvec3(0.0, 0.0, 0.0), dvec3(100.0, 80.0, 60.0));
 		// Z方向に貫通するシリンダーで穴を開ける（曲面＋円形エッジが生まれる）
 		let hole = Shape::cylinder(dvec3(50.0, 40.0, -1.0), 15.0, DVec3::Z, 62.0);
 		let shape = box_shape.subtract(&hole).shape;
