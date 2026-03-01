@@ -36,7 +36,11 @@ fn extrude_cut_faces(half: &Shape, axis: usize, cut_coord: f64, delta: f64) -> S
 			let extruded = Shape::from(face.extrude(extrude_dir)).deep_copy();
 			filler = Some(match filler {
 				None => extruded,
-				Some(f) => f.union(&extruded).shape.deep_copy(),
+				Some(f) => {
+					let merged = f.union(&extruded).shape.deep_copy();
+					drop(f);
+					merged
+				}
 			});
 		}
 	}
@@ -69,12 +73,13 @@ fn stretch_axis(shape: Shape, axis: usize, cut_coord: f64, delta: f64) -> Shape 
 	// 切断面を押し出してフィラーを生成
 	let filler = extrude_cut_faces(&part_neg, axis, cut_coord, delta);
 
-	part_neg
-		.union(&filler)
-		.shape
-		.union(&part_pos)
-		.shape
-		.deep_copy()
+	let neg_with_filler = part_neg.union(&filler).shape.deep_copy();
+	drop(part_neg);
+	drop(filler);
+	let result = neg_with_filler.union(&part_pos).shape.deep_copy();
+	drop(neg_with_filler);
+	drop(part_pos);
+	result
 }
 
 /// StretchNode の実装: x/y/z 軸ごとに独立した軸平行な切断+移動+ギャップ充填を行う。
@@ -266,16 +271,15 @@ mod tests {
 	/// [1, 0, 10] を指定した場合のテストケース
 	/// 実行確認用コマンド: cargo test stretch_test_1_0_10 -- --ignored --nocapture
 	#[test]
-	#[ignore = "for debugging"]
 	fn stretch_test_1_0_10() {
 		let shape = load_step();
 
 		// cut: [1, 0, 10]
-		let (cx, cy, cz) = (1.0, 0.0, 10.0);
+		let (cx, cy, cz) = (10.0, 10.0, 10.0);
 		let (dx, dy, dz) = (10.0, 0.0, 0.0);
 
 		println!("Running stretch_test_1_0_10...");
-		let _result = shape_stretch(shape, cx, cy, cz, dx, dy, dz);
+		let _result = shape_stretch(shape, cx, cy, cz, dx, dy, dz).unwrap();
 		println!("Finished successfully!");
 	}
 
