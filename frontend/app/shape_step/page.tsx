@@ -10,8 +10,6 @@ const testShape: ShapeNode = {
 
 export default function ShapePage() {
   return (
-    <div style={{ width: '100%', height: '100%' }}>
-      <Lambda360Shape shape={testShape} origin_url="https://dfrujiq0byx89.cloudfront.net" />
-    </div>
+    <Lambda360Shape shape={testShape} origin_url="https://dfrujiq0byx89.cloudfront.net" />
   );
 }

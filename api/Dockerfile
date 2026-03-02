@@ -1,6 +1,5 @@
 # builder
 FROM lzpel/chijin-builder AS builder
-ENV OCCT_ROOT=/occt
 COPY . .
 RUN sh -c ". $HOME/.cargo/env && cargo build --release --features frontend"
 RUN find target/release -maxdepth 1 -type f -executable | xargs -IX install -D X -t target/bin/

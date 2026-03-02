@@ -3,7 +3,7 @@
 import Lambda360Order from '@widget/Lambda360Order';
 import type { ShapeNode } from '@/out/client';
 
-export default function Order1Page() {
+export default function OrderBoxPage() {
     const params = {
         width: { type: "number" as const, label: "幅", unit: "mm", default: 300, constraint: { min: 200, max: 600, step: 10 } },
         depth: { type: "number" as const, label: "奥行き", unit: "mm", default: 400, constraint: { min: 200, max: 800, step: 10 } },

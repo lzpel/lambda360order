@@ -1,5 +1,5 @@
 use crate::openapi::*;
-use crate::shape_stretch::shape_stretch;
+use crate::shape_stretch::stretch;
 use crate::shape_to_glb::create_glb;
 use chijin::Shape;
 use ngoni;
@@ -214,7 +214,7 @@ fn eval_shape(node: &ShapeNode, shapes: &mut HashMap<String, Shape>) -> Result<S
 			let [cx, cy, cz] = resolve_vec3(&n.cut)?;
 			let [dx, dy, dz] = resolve_vec3(&n.delta)?;
 			let child = eval_shape(&n.shape, shapes)?;
-			shape_stretch(child, cx, cy, cz, dx, dy, dz)
+			stretch(&child, cx, cy, cz, dx, dy, dz).map_err(|e| e.to_string())
 		}
 		_ => Err("Only StepNode and StretchNode are currently supported".to_string()),
 	}

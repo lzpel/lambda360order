@@ -1,128 +1,75 @@
-use chijin::Shape;
-use glam::dvec3;
+use chijin::{Error, Shape};
+use glam::DVec3;
 
-/// 切断面の検出しきい値
-const NORMAL_THRESHOLD: f64 = 0.99;
-const COORD_TOLERANCE: f64 = 0.1;
-
-/// part_neg の切断面（指定軸の座標 ≈ cut_coord かつ法線が軸に垂直な Face）を
-/// 見つけて delta だけ押し出し、フィラーソリッドを生成する。
-/// 複数 Face がマッチした場合は union で結合する。
-fn extrude_cut_faces(half: &Shape, axis: usize, cut_coord: f64, delta: f64) -> Shape {
-	let extrude_dir = match axis {
-		0 => dvec3(delta, 0.0, 0.0),
-		1 => dvec3(0.0, delta, 0.0),
-		_ => dvec3(0.0, 0.0, delta),
-	};
-
+/// 切断面フェイスの Compound を delta 方向に押し出してフィラーを作ります。
+/// BooleanShape::new_faces から直接フェイスを受け取るため、
+/// heuristic による法線・重心フィルタは不要です。
+fn extrude_faces(cut_faces: &Shape, delta: DVec3) -> Result<Shape, Error> {
 	let mut filler: Option<Shape> = None;
-	for face in half.faces() {
-		let normal = face.normal_at_center();
-		let center = face.center_of_mass();
-
-		let n_component = match axis {
-			0 => normal.x,
-			1 => normal.y,
-			_ => normal.z,
-		};
-		let c_component = match axis {
-			0 => center.x,
-			1 => center.y,
-			_ => center.z,
-		};
-
-		if n_component.abs() > NORMAL_THRESHOLD && (c_component - cut_coord).abs() < COORD_TOLERANCE
-		{
-			let extruded = Shape::from(face.extrude(extrude_dir)).deep_copy();
-			filler = Some(match filler {
-				None => extruded,
-				Some(f) => {
-					let merged = f.union(&extruded).deep_copy();
-					drop(f);
-					merged
-				}
-			});
-		}
+	for face in cut_faces.faces() {
+		let extruded = Shape::from(face.extrude(delta)?);
+		filler = Some(match filler {
+			None => extruded,
+			Some(f) => Shape::from(f.union(&extruded)?),
+		});
 	}
-	filler.unwrap_or_else(Shape::empty)
+	Ok(filler.unwrap_or_else(Shape::empty))
 }
 
-/// 1軸分の切断+移動+ギャップ充填を行う。
-/// axis: 0=X, 1=Y, 2=Z
-fn stretch_axis(shape: Shape, axis: usize, cut_coord: f64, delta: f64) -> Shape {
-	let (plane_origin, plane_normal) = match axis {
-		0 => (dvec3(cut_coord, 0.0, 0.0), dvec3(1.0, 0.0, 0.0)),
-		1 => (dvec3(0.0, cut_coord, 0.0), dvec3(0.0, 1.0, 0.0)),
-		_ => (dvec3(0.0, 0.0, cut_coord), dvec3(0.0, 0.0, 1.0)),
-	};
+/// 指定された座標とベクトルで形状を分割し、片方を平行移動させた後、隙間を押し出し形状で埋めることで引き伸ばしを行います。
+/// intersect の BooleanShape::new_faces から切断面を直接取得するため、
+/// 法線・重心による heuristic フィルタを使いません。
+fn stretch_vector(shape: &Shape, origin: DVec3, delta: DVec3) -> Result<Shape, Error> {
+	let half = Shape::half_space(origin, delta.normalize());
 
-	let translation = match axis {
-		0 => dvec3(delta, 0.0, 0.0),
-		1 => dvec3(0.0, delta, 0.0),
-		_ => dvec3(0.0, 0.0, delta),
-	};
+	let intersect_result = shape.intersect(&half)?;
+	let part_neg = intersect_result.shape;
+	let cut_faces = intersect_result.new_faces;
+	let part_pos = Shape::from(shape.subtract(&half)?).translated(delta);
 
-	// half_space の法線はソリッドの外側を向く慣例。
-	// plane_normal が +X を向く場合、ソリッドは x < cut_coord（負側）。
-	// subtract した側が cut_coord より大きい正側になる。
-	let half = Shape::half_space(plane_origin, plane_normal);
-	let part_neg = shape.intersect(&half).deep_copy();
-	let mut part_pos = shape.subtract(&half).deep_copy();
-	part_pos.set_global_translation(translation);
-
-	// 切断面を押し出してフィラーを生成
-	let filler = extrude_cut_faces(&part_neg, axis, cut_coord, delta);
-
-	let neg_with_filler = part_neg.union(&filler).deep_copy();
-	drop(part_neg);
-	drop(filler);
-	let result = neg_with_filler.union(&part_pos).deep_copy();
-	drop(neg_with_filler);
-	drop(part_pos);
-	result
+	let filler = extrude_faces(&cut_faces, delta)?;
+	let combined = Shape::from(part_neg.union(&filler)?);
+	combined.union(&part_pos).map(Shape::from)
 }
 
-/// StretchNode の実装: x/y/z 軸ごとに独立した軸平行な切断+移動+ギャップ充填を行う。
-///
-/// cut = [cx, cy, cz]: 各軸の切断座標 (mm)
-/// delta = [dx, dy, dz]: 各軸方向の伸縮量 (mm)。負は無視（max(0, d) に変換）。
-///
-/// 各軸について d > 0 の場合のみ処理する:
-///   1. BRepPrimAPI_MakeHalfSpace で無限半空間を生成して切断（intersect / subtract）
-///   2. 正側を d だけ平行移動
-///   3. 負側の切断面 Face を d だけ押し出してフィラーソリッドを生成
-///   4. 負側 ＋ フィラー ＋ 正側 を union して隙間を埋める
-pub fn shape_stretch(
-	shape: Shape,
+/// 形状をX, Y, Zの各軸方向に順番に引き伸ばします。
+pub fn stretch(
+	shape: &Shape,
 	cx: f64,
 	cy: f64,
 	cz: f64,
 	dx: f64,
 	dy: f64,
 	dz: f64,
-) -> Result<Shape, String> {
+) -> Result<Shape, Error> {
 	let eps = 1e-10;
-	let shape = if dx > eps {
-		stretch_axis(shape, 0, cx, dx.max(0.0))
+	let origin = DVec3::new(cx, cy, cz);
+
+	let x;
+	let after_x: &Shape = if dx > eps {
+		x = stretch_vector(shape, origin, DVec3::new(dx, 0.0, 0.0))?;
+		&x
 	} else {
 		shape
 	};
-	let shape = if dy > eps {
-		stretch_axis(shape, 1, cy, dy.max(0.0))
+
+	let y;
+	let after_y: &Shape = if dy > eps {
+		y = stretch_vector(after_x, origin, DVec3::new(0.0, dy, 0.0))?;
+		&y
 	} else {
-		shape
+		after_x
 	};
-	let shape = if dz > eps {
-		stretch_axis(shape, 2, cz, dz.max(0.0))
+
+	let z;
+	let after_z: &Shape = if dz > eps {
+		z = stretch_vector(after_y, origin, DVec3::new(0.0, 0.0, dz))?;
+		&z
 	} else {
-		shape
+		after_y
 	};
-	Ok(if dx > eps || dy > eps || dz > eps {
-		println!("cleaned");
-		shape.clean().deep_copy()
-	} else {
-		shape
-	})
+
+	after_z.clean()
 }
 
 #[cfg(test)]
@@ -130,6 +77,7 @@ mod tests {
 	use super::*;
 	use crate::shape_to_glb::create_glb;
 	use chijin::Shape;
+	use glam::dvec3;
 
 	const TEST_STEP_PATH: &str = "../public/LAMBDA360-BOX-d6cb2eb2d6e0d802095ea1eda691cf9a3e9bf3394301a0d148f53e55f0f97951.step";
 
@@ -163,8 +111,8 @@ mod tests {
 			.expect("mesh failed on original");
 
 		// ボックス中央 (50,40,30) で切断して X 方向に 50mm 引き伸ばす
-		let stretched = shape_stretch(make_box(), 50.0, 40.0, 30.0, 50.0, 0.0, 0.0)
-			.expect("shape_stretch failed");
+		let stretched =
+			stretch(&make_box(), 50.0, 40.0, 30.0, 50.0, 0.0, 0.0).expect("stretch failed");
 		let stretched_mesh = stretched
 			.mesh_with_tolerance(0.1)
 			.expect("mesh failed on stretched");
@@ -189,8 +137,7 @@ mod tests {
 			.expect("mesh failed on original");
 		let original_verts = original_mesh.vertices.len();
 
-		let result = shape_stretch(make_box(), 50.0, 40.0, 30.0, 0.0, 0.0, 0.0)
-			.expect("shape_stretch failed");
+		let result = stretch(&make_box(), 50.0, 40.0, 30.0, 0.0, 0.0, 0.0).expect("stretch failed");
 		let result_mesh = result
 			.mesh_with_tolerance(0.1)
 			.expect("mesh failed on result");
@@ -211,8 +158,8 @@ mod tests {
 			.expect("mesh failed on original");
 		let original_verts = original_mesh.vertices.len();
 
-		let result = shape_stretch(make_box(), 50.0, 40.0, 30.0, -50.0, -30.0, -10.0)
-			.expect("shape_stretch failed");
+		let result =
+			stretch(&make_box(), 50.0, 40.0, 30.0, -50.0, -30.0, -10.0).expect("stretch failed");
 		let result_mesh = result
 			.mesh_with_tolerance(0.1)
 			.expect("mesh failed on result");
@@ -236,8 +183,8 @@ mod tests {
 		println!("STEP読み込み完了, bbox center = {:?}", center);
 
 		// X軸方向に100mm、Z軸方向に50mm引き伸ばす
-		let stretched = shape_stretch(load_step(), center.x, center.y, center.z, 10.0, 0.0, 0.0)
-			.expect("shape_stretch failed");
+		let stretched = stretch(&load_step(), center.x, center.y, center.z, 10.0, 0.0, 0.0)
+			.expect("stretch failed");
 		println!("ストレッチ完了");
 
 		let mesh = stretched
@@ -265,7 +212,7 @@ mod tests {
 		let (cx, cy, cz) = (1.0, 0.0, 1.0);
 		let (dx, dy, dz) = (1.0, 1.0, 1.0);
 		println!("Running stretch_known_error_case_1_0_1. This might abort...");
-		shape_stretch(shape, cx, cy, cz, dx, dy, dz).expect("shape_stretch failed");
+		stretch(&shape, cx, cy, cz, dx, dy, dz).expect("stretch failed");
 	}
 
 	/// [1, 0, 10] を指定した場合のテストケース
@@ -279,7 +226,7 @@ mod tests {
 		let (dx, dy, dz) = (10.0, 0.0, 0.0);
 
 		println!("Running stretch_test_1_0_10...");
-		let _result = shape_stretch(shape, cx, cy, cz, dx, dy, dz).unwrap();
+		let _result = stretch(&shape, cx, cy, cz, dx, dy, dz).unwrap();
 		println!("Finished successfully!");
 	}
 
@@ -292,15 +239,15 @@ mod tests {
 	#[test]
 	fn heap_corruption_box_same_params() {
 		let shape = Shape::box_from_corners(dvec3(0.0, 0.0, 0.0), dvec3(100.0, 80.0, 60.0));
-		println!("shape_stretch 開始");
-		let _result = shape_stretch(shape, 1.0, 0.0, 10.0, 10.0, 0.0, 0.0);
+		println!("stretch 開始");
+		let _result = stretch(&shape, 1.0, 0.0, 10.0, 10.0, 0.0, 0.0);
 		println!("Drop 直前");
 		// _result がここで drop → STATUS_HEAP_CORRUPTION が発生するか観察
 	}
 
-	/// 【再現②】shape_stretch を経由せず Boolean 演算チェーンを直接組む
+	/// 【再現②】stretch を経由せず Boolean 演算チェーンを直接組む
 	/// intersect → subtract → union（フィラー付き）→ clean の最小構成。
-	/// shape_stretch 内のどの操作が引き金かを特定するための最小ケース。
+	/// stretch 内のどの操作が引き金かを特定するための最小ケース。
 	/// cargo test heap_corruption_direct_bool_chain -- --ignored --nocapture
 	#[test]
 	#[ignore = "STATUS_HEAP_CORRUPTION 再現用（プロセス終了時クラッシュ想定）"]
@@ -313,15 +260,16 @@ mod tests {
 		let cutter = Shape::box_from_corners(dvec3(cut_x, -big, -big), dvec3(big, big, big));
 
 		// stretch_axis(axis=X) の内部と同じ操作列
-		let mut pos_half = shape.intersect(&cutter);
-		let neg_half = shape.subtract(&cutter);
+		let mut pos_half = Shape::from(shape.intersect(&cutter).unwrap());
+		let neg_half = Shape::from(shape.subtract(&cutter).unwrap());
 		pos_half.set_global_translation(dvec3(delta, 0.0, 0.0));
 
 		// フィラー（平行移動で生じたギャップを埋めるボックス）
 		let filler =
 			Shape::box_from_corners(dvec3(cut_x, 0.0, 0.0), dvec3(cut_x + delta, 80.0, 60.0));
 
-		let merged = neg_half.union(&filler).union(&pos_half);
+		let pre_merged = Shape::from(neg_half.union(&filler).unwrap());
+		let merged = Shape::from(pre_merged.union(&pos_half).unwrap());
 		let _result = merged.clean();
 
 		println!("Drop 直前");
@@ -343,8 +291,8 @@ mod tests {
 		let shape = Shape::box_from_corners(dvec3(0.0, 0.0, 0.0), dvec3(100.0, 80.0, 60.0));
 		let cutter = Shape::box_from_corners(dvec3(cut_x, -big, -big), dvec3(big, big, big));
 
-		let mut pos_half = shape.intersect(&cutter);
-		let neg_half = shape.subtract(&cutter);
+		let mut pos_half = Shape::from(shape.intersect(&cutter).unwrap());
+		let neg_half = Shape::from(shape.subtract(&cutter).unwrap());
 
 		drop(cutter); // ← 入力の早期解放 → ACCESS_VIOLATION が起きるか観察
 
@@ -352,7 +300,8 @@ mod tests {
 
 		let filler =
 			Shape::box_from_corners(dvec3(cut_x, 0.0, 0.0), dvec3(cut_x + delta, 80.0, 60.0));
-		let _result = neg_half.union(&filler).union(&pos_half);
+		let pre_merged = Shape::from(neg_half.union(&filler).unwrap());
+		let _result = Shape::from(pre_merged.union(&pos_half).unwrap());
 
 		println!("もし表示されたら early drop による ACCESS_VIOLATION は起きなかった");
 	}
@@ -365,11 +314,11 @@ mod tests {
 		let box_a = Shape::box_from_corners(dvec3(0.0, 0.0, 0.0), dvec3(100.0, 80.0, 60.0));
 		// box_b を結合して x=100 の面を L字に（一部だけ埋める）
 		let box_b = Shape::box_from_corners(dvec3(100.0, 0.0, 0.0), dvec3(150.0, 50.0, 40.0));
-		let shape = box_a.union(&box_b);
+		let shape = Shape::from(box_a.union(&box_b).unwrap());
 
 		// x=100 の面（L字残余部分）が extrude_cut_faces にマッチする
-		println!("shape_stretch 開始");
-		let _result = shape_stretch(shape, 100.0, 0.0, 0.0, 20.0, 0.0, 0.0);
+		println!("stretch 開始");
+		let _result = stretch(&shape, 100.0, 0.0, 0.0, 20.0, 0.0, 0.0);
 		println!("Drop 直前");
 	}
 
@@ -381,10 +330,10 @@ mod tests {
 		let box_shape = Shape::box_from_corners(dvec3(0.0, 0.0, 0.0), dvec3(100.0, 80.0, 60.0));
 		// Z方向に貫通するシリンダーで穴を開ける（曲面＋円形エッジが生まれる）
 		let hole = Shape::cylinder(dvec3(50.0, 40.0, -1.0), 15.0, DVec3::Z, 62.0);
-		let shape = box_shape.subtract(&hole);
+		let shape = Shape::from(box_shape.subtract(&hole).unwrap());
 
-		println!("shape_stretch 開始");
-		let _result = shape_stretch(shape, 50.0, 40.0, 30.0, 20.0, 0.0, 0.0);
+		println!("stretch 開始");
+		let _result = stretch(&shape, 50.0, 40.0, 30.0, 20.0, 0.0, 0.0);
 		println!("Drop 直前");
 	}
 }

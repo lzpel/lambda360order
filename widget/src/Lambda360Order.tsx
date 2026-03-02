@@ -72,7 +72,7 @@ export default function Lambda360Order({ params: schemaParams, lambda, origin_ur
                 preserveCamera={true}
                 origin_url={origin_url}
                 upAxis="Z"
-                style={{ flex: 1, position: 'relative', backgroundColor: '#f5f5f5', borderRight: '1px solid #ddd', minWidth: 0, minHeight: 0, width: '100%', height: '100%' }}
+                style={{ flex: 1, position: 'relative', backgroundColor: '#f5f5f5', borderRight: '1px solid #ddd', minWidth: 0, minHeight: 0, height: '100%' }}
             />
 
             {/* Right: Order Form */}

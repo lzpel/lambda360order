@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Lambda360 Order',
@@ -10,9 +9,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  let fullstyle = { width: '100%', height: '100%', margin: 0, padding: 0 };
   return (
-    <html lang="ja">
-      <body>{children}</body>
+    <html lang="ja" style={fullstyle}>
+      <body style={fullstyle}>{children}</body>
     </html>
   );
 }
