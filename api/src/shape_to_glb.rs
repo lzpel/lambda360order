@@ -1,9 +1,9 @@
+use chijin::Shape;
 use gltf_json as json;
-use opencascade::primitives::Shape;
 use std::io::Write;
 
 /// GLB (GLTF Binary) を生成する。OCCのインデックス付きメッシュをそのまま使用。
-pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u8>, String> {
+pub fn create_glb(mesh: &chijin::Mesh, shape: &Shape) -> Result<Vec<u8>, String> {
 	use json::validation::Checked::Valid;
 
 	// OCCのメッシュデータをf32に変換（KHR_materials_unlit使用のため法線は不要）
@@ -55,7 +55,8 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 	// エッジデータ
 	let mut edge_data: Vec<f32> = Vec::new();
 	for edge in shape.edges() {
-		let segments: Vec<_> = edge.approximation_segments().collect();
+		let segments: Vec<_> = edge.approximation_segments(0.1).collect();
+
 		for w in segments.windows(2) {
 			edge_data.extend_from_slice(&[
 				w[0].x as f32,
@@ -256,7 +257,8 @@ pub fn create_glb(mesh: &opencascade::mesh::Mesh, shape: &Shape) -> Result<Vec<u
 mod tests {
 	use crate::openapi::*;
 	use crate::shape::shape;
-	use opencascade::primitives::Shape;
+	use chijin::Shape;
+
 	use std::collections::HashMap;
 
 	/// cargo test の作業ディレクトリは api/ (Cargo.toml のある場所)
@@ -264,9 +266,11 @@ mod tests {
 	const TEST_KEY: &str = "test_brep_sha256";
 
 	fn load_test_shape() -> Shape {
-		Shape::read_brep_text(TEST_BREP_PATH)
-			.or_else(|_| Shape::read_brep_bin(TEST_BREP_PATH))
-			.expect("テスト用BRepファイルが見つかりません: ../public/PA-001-DF7.brep")
+		let data = std::fs::read(TEST_BREP_PATH)
+			.expect("テスト用BRepファイルが見つかりません: ../public/PA-001-DF7.brep");
+		Shape::read_brep_text(&mut std::io::Cursor::new(&data))
+			.or_else(|_| Shape::read_brep_bin(&mut std::io::Cursor::new(&data)))
+			.expect("テスト用BRepファイルが読み込めません: ../public/PA-001-DF7.brep")
 	}
 
 	fn shapes_map(key: &str) -> HashMap<String, Shape> {

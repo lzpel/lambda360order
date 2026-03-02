@@ -1,5 +1,5 @@
+use chijin::Shape;
 use glam::dvec3;
-use opencascade::primitives::Shape;
 
 /// 切断面の検出しきい値
 const NORMAL_THRESHOLD: f64 = 0.99;
@@ -37,7 +37,7 @@ fn extrude_cut_faces(half: &Shape, axis: usize, cut_coord: f64, delta: f64) -> S
 			filler = Some(match filler {
 				None => extruded,
 				Some(f) => {
-					let merged = f.union(&extruded).shape.deep_copy();
+					let merged = f.union(&extruded).deep_copy();
 					drop(f);
 					merged
 				}
@@ -66,17 +66,17 @@ fn stretch_axis(shape: Shape, axis: usize, cut_coord: f64, delta: f64) -> Shape 
 	// plane_normal が +X を向く場合、ソリッドは x < cut_coord（負側）。
 	// subtract した側が cut_coord より大きい正側になる。
 	let half = Shape::half_space(plane_origin, plane_normal);
-	let part_neg = shape.intersect(&half).shape.deep_copy();
-	let mut part_pos = shape.subtract(&half).shape.deep_copy();
+	let part_neg = shape.intersect(&half).deep_copy();
+	let mut part_pos = shape.subtract(&half).deep_copy();
 	part_pos.set_global_translation(translation);
 
 	// 切断面を押し出してフィラーを生成
 	let filler = extrude_cut_faces(&part_neg, axis, cut_coord, delta);
 
-	let neg_with_filler = part_neg.union(&filler).shape.deep_copy();
+	let neg_with_filler = part_neg.union(&filler).deep_copy();
 	drop(part_neg);
 	drop(filler);
-	let result = neg_with_filler.union(&part_pos).shape.deep_copy();
+	let result = neg_with_filler.union(&part_pos).deep_copy();
 	drop(neg_with_filler);
 	drop(part_pos);
 	result
@@ -129,13 +129,13 @@ pub fn shape_stretch(
 mod tests {
 	use super::*;
 	use crate::shape_to_glb::create_glb;
-	use glam::DVec3;
-	use opencascade::primitives::Shape;
+	use chijin::Shape;
 
 	const TEST_STEP_PATH: &str = "../public/LAMBDA360-BOX-d6cb2eb2d6e0d802095ea1eda691cf9a3e9bf3394301a0d148f53e55f0f97951.step";
 
 	fn load_step() -> Shape {
-		Shape::read_step(TEST_STEP_PATH).expect("STEPファイルが見つかりません")
+		let data = std::fs::read(TEST_STEP_PATH).expect("STEPファイルが見つかりません");
+		Shape::read_step(&mut std::io::Cursor::new(data)).expect("STEPファイルの読み込みに失敗")
 	}
 
 	/// シンプルなボックスを生成（100x80x60mm、原点中心付近）
@@ -144,8 +144,8 @@ mod tests {
 	}
 
 	/// メッシュの bounding box 中心を返す
-	fn bbox_center(mesh: &opencascade::mesh::Mesh) -> DVec3 {
-		let (mut min, mut max) = (DVec3::splat(f64::MAX), DVec3::splat(f64::MIN));
+	fn bbox_center(mesh: &chijin::Mesh) -> glam::DVec3 {
+		let (mut min, mut max) = (glam::DVec3::splat(f64::MAX), glam::DVec3::splat(f64::MIN));
 		for v in &mesh.vertices {
 			min = min.min(*v);
 			max = max.max(*v);
@@ -232,7 +232,7 @@ mod tests {
 		let shape = load_step();
 		let pre_mesh = shape.mesh_with_tolerance(0.1).expect("mesh failed");
 		let center = bbox_center(&pre_mesh);
-		let center = DVec3::default();
+		let center = glam::DVec3::default();
 		println!("STEP読み込み完了, bbox center = {:?}", center);
 
 		// X軸方向に100mm、Z軸方向に50mm引き伸ばす
@@ -313,15 +313,15 @@ mod tests {
 		let cutter = Shape::box_from_corners(dvec3(cut_x, -big, -big), dvec3(big, big, big));
 
 		// stretch_axis(axis=X) の内部と同じ操作列
-		let mut pos_half = shape.intersect(&cutter).shape;
-		let neg_half = shape.subtract(&cutter).shape;
+		let mut pos_half = shape.intersect(&cutter);
+		let neg_half = shape.subtract(&cutter);
 		pos_half.set_global_translation(dvec3(delta, 0.0, 0.0));
 
 		// フィラー（平行移動で生じたギャップを埋めるボックス）
 		let filler =
 			Shape::box_from_corners(dvec3(cut_x, 0.0, 0.0), dvec3(cut_x + delta, 80.0, 60.0));
 
-		let merged = neg_half.union(&filler).shape.union(&pos_half).shape;
+		let merged = neg_half.union(&filler).union(&pos_half);
 		let _result = merged.clean();
 
 		println!("Drop 直前");
@@ -343,8 +343,8 @@ mod tests {
 		let shape = Shape::box_from_corners(dvec3(0.0, 0.0, 0.0), dvec3(100.0, 80.0, 60.0));
 		let cutter = Shape::box_from_corners(dvec3(cut_x, -big, -big), dvec3(big, big, big));
 
-		let mut pos_half = shape.intersect(&cutter).shape;
-		let neg_half = shape.subtract(&cutter).shape;
+		let mut pos_half = shape.intersect(&cutter);
+		let neg_half = shape.subtract(&cutter);
 
 		drop(cutter); // ← 入力の早期解放 → ACCESS_VIOLATION が起きるか観察
 
@@ -352,7 +352,7 @@ mod tests {
 
 		let filler =
 			Shape::box_from_corners(dvec3(cut_x, 0.0, 0.0), dvec3(cut_x + delta, 80.0, 60.0));
-		let _result = neg_half.union(&filler).shape.union(&pos_half).shape;
+		let _result = neg_half.union(&filler).union(&pos_half);
 
 		println!("もし表示されたら early drop による ACCESS_VIOLATION は起きなかった");
 	}
@@ -365,7 +365,7 @@ mod tests {
 		let box_a = Shape::box_from_corners(dvec3(0.0, 0.0, 0.0), dvec3(100.0, 80.0, 60.0));
 		// box_b を結合して x=100 の面を L字に（一部だけ埋める）
 		let box_b = Shape::box_from_corners(dvec3(100.0, 0.0, 0.0), dvec3(150.0, 50.0, 40.0));
-		let shape = box_a.union(&box_b).shape;
+		let shape = box_a.union(&box_b);
 
 		// x=100 の面（L字残余部分）が extrude_cut_faces にマッチする
 		println!("shape_stretch 開始");
@@ -381,7 +381,7 @@ mod tests {
 		let box_shape = Shape::box_from_corners(dvec3(0.0, 0.0, 0.0), dvec3(100.0, 80.0, 60.0));
 		// Z方向に貫通するシリンダーで穴を開ける（曲面＋円形エッジが生まれる）
 		let hole = Shape::cylinder(dvec3(50.0, 40.0, -1.0), 15.0, DVec3::Z, 62.0);
-		let shape = box_shape.subtract(&hole).shape;
+		let shape = box_shape.subtract(&hole);
 
 		println!("shape_stretch 開始");
 		let _result = shape_stretch(shape, 50.0, 40.0, 30.0, 20.0, 0.0, 0.0);

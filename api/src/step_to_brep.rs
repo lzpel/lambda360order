@@ -1,7 +1,7 @@
 use crate::content_hash::content_hash as compute_hash;
 use crate::openapi::StepStatusBody;
+use chijin::Shape;
 use ngoni::s3::S3Storage;
-use opencascade::primitives::Shape;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -58,17 +58,6 @@ pub async fn step_pipeline(
 
 	let content_hash = compute_hash(&step_data);
 
-	// 一時ファイルに書き出し
-	let tmp_dir = std::env::temp_dir();
-	let step_path = tmp_dir.join(format!("{content_hash}.step"));
-	let brep_path = tmp_dir.join(format!("{content_hash}.brep"));
-
-	if let Err(e) = std::fs::write(&step_path, &step_data) {
-		let msg = format!("一時ファイル書き込み失敗: {e}");
-		progress(101, msg.clone()).await;
-		return Err(msg);
-	}
-
 	progress(20, "STEPファイル読み込み中 (0秒)".to_string()).await;
 
 	// Shape::read_step 実行中、5秒ごとに進捗を更新するタスク
@@ -92,14 +81,16 @@ pub async fn step_pipeline(
 	});
 
 	// Shape::read_step はブロッキングなので spawn_blocking へ
-	let step_path2 = step_path.clone();
-	let task_read_step = tokio::task::spawn_blocking(move || Shape::read_step(&step_path2));
+	// chijin API: read_step(&mut impl Read) — Cursor でインメモリストリームを橋渡し
+	let step_data_clone = step_data.clone();
+	let task_read_step = tokio::task::spawn_blocking(move || {
+		Shape::read_step(&mut std::io::Cursor::new(step_data_clone))
+	});
 	let shape_result = task_read_step
 		.await
 		.map_err(|e| format!("spawn_blocking失敗: {e:?}"))
 		.and_then(|r| r.map_err(|e| format!("STEP読み込み失敗: {e:?}")));
 	task_heartbeat.abort();
-	let _ = std::fs::remove_file(&step_path);
 	let shape = {
 		if let Err(ref e) = shape_result {
 			progress(101, e.clone()).await;
@@ -109,22 +100,15 @@ pub async fn step_pipeline(
 
 	progress(70, "BRepバイナリ書き込み中".to_string()).await;
 
+	// chijin API: write_brep_bin(&mut impl Write) — Vec<u8> バッファに直接書き込み
+	let mut brep_data: Vec<u8> = Vec::new();
 	let r = shape
-		.write_brep_bin(&brep_path)
+		.write_brep_bin(&mut brep_data)
 		.map_err(|e| format!("BRep書き込み失敗: {e:?}"));
 	if let Err(ref e) = r {
 		progress(101, e.clone()).await;
 	}
 	r?;
-
-	let brep_data = std::fs::read(&brep_path).map_err(|e| format!("BRepファイル読み込み失敗: {e}"));
-	let _ = std::fs::remove_file(&brep_path);
-	let brep_data = {
-		if let Err(ref e) = brep_data {
-			progress(101, e.clone()).await;
-		}
-		brep_data?
-	};
 
 	// アップロード
 	progress(90, "アップロード中".to_string()).await;
