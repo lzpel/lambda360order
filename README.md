@@ -56,11 +56,12 @@ make run
 
 ### デプロイ
 
+CDN https://unpkg.com/lambda360form@latest/dist/lambda360form.js
+AWS https://dfrujiq0byx89.cloudfront.net
+
 ```sh
 make deploy-aws   # generate + deploy + AWS CDK deploy
 ```
-
-デプロイ先: https://dfrujiq0byx89.cloudfront.net
 
 ## 主要な型: ShapeNode
 

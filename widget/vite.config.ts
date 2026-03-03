@@ -16,7 +16,7 @@ export default defineConfig({
       entry: resolve(__dirname, 'src/widget-entry.tsx'),
       name: 'Lambda360',
       formats: ['iife'],
-      fileName: () => 'widget.js',
+      fileName: () => 'lambda360form.js',
     },
     rollupOptions: {
       output: {
@@ -24,6 +24,5 @@ export default defineConfig({
       },
     },
     cssCodeSplit: false,
-    outDir: 'out/out', // outDirの中身はviteが空にしてしまうのでout/だとout/clientが消えてしまう、そこでネストを一段深くしている、out/outの中身はmake deployで../publicにコピーされる
   },
 });
