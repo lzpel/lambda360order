@@ -2,7 +2,7 @@
 
 ## 背景
 
-`lambda360order` の API サーバー（Rust/axum）で `ngoni::s3::S3Storage` を使用する中で
+`Lambda360Form` の API サーバー（Rust/axum）で `ngoni::s3::S3Storage` を使用する中で
 いくつかの問題点・改善点を発見した。優先度順に記載する。
 
 ---
@@ -96,7 +96,7 @@ pub struct S3Storage {
 利用側が内部フィールドに直接アクセスする脆い回避コードを書く必要がある。
 
 ```rust
-// 現状の回避策（lambda360order/api/src/server.rs）
+// 現状の回避策（Lambda360Form/api/src/server.rs）
 fn clone_s3(s: &ngoni::s3::S3Storage) -> ngoni::s3::S3Storage {
     ngoni::s3::S3Storage {
         bucket: s.bucket.clone(),

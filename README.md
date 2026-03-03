@@ -1,4 +1,4 @@
-# lambda360order
+# lambda360form
 
 金属部品のカスタムオーダーを受け付けるB2B SaaSプロジェクト。
 顧客がSTEPファイルをアップロードして3Dモデルを確認しながら材質・個数などを指定して発注できる。
@@ -10,7 +10,7 @@
 ## プロジェクト構成
 
 ```
-lambda360order/
+lambda360form/
 ├── openapi/      TypeSpec API定義 → OpenAPI仕様 → TSクライアント生成
 ├── api/          Rustサーバー (Axum)。ShapeNodeをGLBに変換してS3キャッシュ
 ├── widget/       React製埋め込みウィジェット (iife bundle)

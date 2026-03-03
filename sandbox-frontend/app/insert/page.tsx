@@ -30,7 +30,7 @@ export default function InsertPage() {
                 <Script
                     id="lambda360-loader"
                     strategy="afterInteractive"
-                    src="https://lzpel.github.io/lambda360order/main.js"
+                    src="https://lzpel.github.io/Lambda360Form/main.js"
                 />
             </div>
         </>

@@ -1,9 +1,9 @@
 "use client";
 
-import Lambda360Order from '@widget/Lambda360Order';
+import Lambda360Form from '@widget/Lambda360Form';
 import type { ShapeNode } from '@/out/client';
 
-export default function OrderBoxPage() {
+export default function FormBoxPage() {
     const params = {
         width: { type: "number" as const, label: "幅", unit: "mm", default: 300, constraint: { min: 200, max: 600, step: 10 } },
         depth: { type: "number" as const, label: "奥行き", unit: "mm", default: 400, constraint: { min: 200, max: 800, step: 10 } },
@@ -26,7 +26,7 @@ export default function OrderBoxPage() {
 
     return (
         <div style={{ width: '100%', height: '100%', margin: 0, padding: 0 }}>
-            <Lambda360Order params={params} lambda={lambda} />
+            <Lambda360Form params={params} lambda={lambda} />
         </div>
     );
 }

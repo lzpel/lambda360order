@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Live Demo
 
-https://lzpel.github.io/lambda360order/
+https://lzpel.github.io/Lambda360Form/
 
 ## Getting Started
 

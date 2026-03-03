@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Lambda360 Order',
+  title: 'Lambda360Form',
 };
 
 export default function RootLayout({

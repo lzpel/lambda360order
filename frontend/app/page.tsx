@@ -8,7 +8,7 @@ export default function Home() {
         <li><Link href="/upload">STEPファイル変換ツール</Link></li>
         <li><Link href="/shape_step">StepNodeデモ (単体形状モデルの表示)</Link></li>
         <li><Link href="/shape_stretch">StretchNodeデモ (伸縮可能モデルの表示)</Link></li>
-        <li><Link href="/order_box">Order Widget Demo (ボックス形状の伸縮)</Link></li>
+        <li><Link href="/form_box">Form Widget Demo (ボックス形状の伸縮)</Link></li>
         <li><Link href="/widget">ウィジェット埋め込みデモ (UMD/IIFE)</Link></li>
       </ul>
     </main>

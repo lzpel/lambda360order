@@ -21,7 +21,7 @@ push:
 	docker push lzpel/chijin-builder
 
 image:
-	docker build -t lambda360order .
+	docker build -t lambda360form .
 
 test-online:
 	cargo test -p api -- test_online_step_pipeline --include-ignored --nocapture

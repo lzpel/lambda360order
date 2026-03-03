@@ -17,13 +17,13 @@ interface ParamConfig {
 
 import type { ShapeNode } from '@/out/client';
 
-export interface Lambda360OrderProps {
+export interface Lambda360FormProps {
     params: Record<string, ParamConfig>;
     lambda: (params: Record<string, any>) => { shape: ShapeNode; color?: string; price?: number };
     origin_url?: string;
 }
 
-export default function Lambda360Order({ params: schemaParams, lambda, origin_url }: Lambda360OrderProps) {
+export default function Lambda360Form({ params: schemaParams, lambda, origin_url }: Lambda360FormProps) {
     // 初期値でstateを初期化
     const [paramValues, setParamValues] = useState<Record<string, any>>(() => {
         const initial: Record<string, any> = {};
