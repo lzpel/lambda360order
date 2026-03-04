@@ -17,7 +17,7 @@ clean:
 	cargo clean
 
 push:
-	docker build -t lzpel/chijin-builder -f DockerfileAsBuilder .
+	docker build --no-cache -t lzpel/chijin-builder -f DockerfileAsBuilder .
 	docker push lzpel/chijin-builder
 
 image:

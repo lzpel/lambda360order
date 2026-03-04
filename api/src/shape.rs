@@ -60,8 +60,9 @@ pub async fn collect_shape(
 		.into_iter()
 		.map(|(sha256, data)| {
 			tokio::task::spawn_blocking(move || {
-				let shape = Shape::read_brep_text(&mut std::io::Cursor::new(&data))
+				let shape = Shape::read_brep_color(&mut std::io::Cursor::new(&data))
 					.or_else(|_| Shape::read_brep_bin(&mut std::io::Cursor::new(&data)))
+					.or_else(|_| Shape::read_brep_text(&mut std::io::Cursor::new(&data)))
 					.map_err(|e| format!("Failed to read brep '{}': {:?}", sha256, e))?;
 				Ok::<_, String>((sha256, shape))
 			})
@@ -194,10 +195,7 @@ pub async fn cached_shape(
 pub(crate) fn shape(node: &ShapeNode, shapes: HashMap<String, Shape>) -> Result<Vec<u8>, String> {
 	let mut shapes = shapes;
 	let occ_shape = eval_shape(node, &mut shapes)?;
-	let mesh = occ_shape
-		.mesh_with_tolerance(0.1)
-		.map_err(|e| format!("mesh_with_tolerance failed: {:?}", e))?;
-	create_glb(&mesh, &occ_shape)
+	create_glb(&occ_shape)
 }
 
 /// ShapeNodeを再帰的に評価してOCC Shapeを返す。

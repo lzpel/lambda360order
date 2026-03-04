@@ -2,18 +2,53 @@ use chijin::Shape;
 use gltf_json as json;
 use std::io::Write;
 
-/// GLB (GLTF Binary) を生成する。OCCのインデックス付きメッシュをそのまま使用。
-pub fn create_glb(mesh: &chijin::Mesh, shape: &Shape) -> Result<Vec<u8>, String> {
+/// GLB (GLTF Binary) を生成する。
+/// shape.colormap が空の場合はグレー単色プリミティブ、
+/// 色情報がある場合は色グループ別プリミティブを生成する。
+pub fn create_glb(shape: &Shape) -> Result<Vec<u8>, String> {
+	let mesh = shape
+		.mesh_with_tolerance(0.1)
+		.map_err(|e| format!("mesh_with_tolerance failed: {:?}", e))?;
+
+	// Rgb は Hash 未実装なので bits() でキー化
+	fn rgb_key(rgb: chijin::Rgb) -> (u32, u32, u32) {
+		(rgb.r.to_bits(), rgb.g.to_bits(), rgb.b.to_bits())
+	}
+
+	// 三角形を色グループ別インデックスリストに振り分ける
+	// face_ids.len() == indices.len() / 3
+	let mut groups: std::collections::HashMap<(u32, u32, u32), (Option<chijin::Rgb>, Vec<usize>)> =
+		std::collections::HashMap::new();
+	for (tri_idx, &face_id) in mesh.face_ids.iter().enumerate() {
+		let rgb = shape.colormap.get(&chijin::TShapeId(face_id)).copied();
+		let key = rgb.map(rgb_key).unwrap_or((0, 0, 0));
+		let entry = groups.entry(key).or_insert((rgb, Vec::new()));
+		entry.1.extend_from_slice(&mesh.indices[tri_idx * 3..tri_idx * 3 + 3]);
+	}
+
+	// グループが1つかつ色なし → グレー単色（従来と同等）
+	// グループが1つかつ色あり → その色で単色
+	// グループが複数 → 色別プリミティブ
+	let groups: Vec<(Option<chijin::Rgb>, Vec<usize>)> = groups.into_values().collect();
+
+	build_glb(shape, &mesh, &groups)
+}
+
+/// 色グループ別プリミティブの GLB を組み立てる。
+/// 頂点バッファは全グループで共有し、インデックスバッファだけ色ごとに分ける。
+fn build_glb(
+	shape: &Shape,
+	mesh: &chijin::Mesh,
+	groups: &[(Option<chijin::Rgb>, Vec<usize>)],
+) -> Result<Vec<u8>, String> {
 	use json::validation::Checked::Valid;
 
-	// OCCのメッシュデータをf32に変換（KHR_materials_unlit使用のため法線は不要）
 	let positions: Vec<[f32; 3]> = mesh
 		.vertices
 		.iter()
 		.map(|v| [v.x as f32, v.y as f32, v.z as f32])
 		.collect();
 
-	// POSITIONのmin/maxを計算（glTF spec必須）
 	let mut pos_min = [f32::INFINITY; 3];
 	let mut pos_max = [f32::NEG_INFINITY; 3];
 	for p in &positions {
@@ -23,108 +58,36 @@ pub fn create_glb(mesh: &chijin::Mesh, shape: &Shape) -> Result<Vec<u8>, String>
 		}
 	}
 
-	// インデックス: 頂点数 ≤ 65535 なら U16 (2 bytes/idx)、超えたら U32 (4 bytes/idx)
-	let idx_count = mesh.indices.len();
-	let (idx_bytes_owned, idx_component_type) = if positions.len() <= 65535 {
-		let v: Vec<u16> = mesh.indices.iter().map(|&i| i as u16).collect();
-		let bytes =
-			unsafe { std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 2) }.to_vec();
-		(bytes, json::accessor::ComponentType::U16)
-	} else {
-		let v: Vec<u32> = mesh.indices.iter().map(|&i| i as u32).collect();
-		let bytes =
-			unsafe { std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 4) }.to_vec();
-		(bytes, json::accessor::ComponentType::U32)
-	};
-
-	// バイナリバッファ: indices | pad | positions | edges
-	let mut buffer = Vec::new();
-	buffer.extend_from_slice(&idx_bytes_owned);
-	let idx_len = idx_bytes_owned.len();
-	while buffer.len() % 4 != 0 {
-		buffer.push(0);
-	}
-
-	let pos_offset = buffer.len();
-	let pos_bytes = unsafe {
-		std::slice::from_raw_parts(positions.as_ptr() as *const u8, positions.len() * 12)
-	};
-	buffer.extend_from_slice(pos_bytes);
-	let pos_len = pos_bytes.len();
-
-	// エッジデータ
-	let mut edge_data: Vec<f32> = Vec::new();
-	for edge in shape.edges() {
-		let segments: Vec<_> = edge.approximation_segments(0.1).collect();
-
-		for w in segments.windows(2) {
-			edge_data.extend_from_slice(&[
-				w[0].x as f32,
-				w[0].y as f32,
-				w[0].z as f32,
-				w[1].x as f32,
-				w[1].y as f32,
-				w[1].z as f32,
-			]);
-		}
-	}
-
-	// エッジデータをBIN chunkに追加（JSON extrasに入れるとJSONが膨大になるため）
-	let edge_bytes =
-		unsafe { std::slice::from_raw_parts(edge_data.as_ptr() as *const u8, edge_data.len() * 4) };
-	let edge_offset = buffer.len();
-	buffer.extend_from_slice(edge_bytes);
-	let edge_len = edge_bytes.len();
-
-	// glTF JSON構築
 	let mut root = json::Root::default();
 	root.buffers.push(json::Buffer {
-		byte_length: json::validation::USize64(buffer.len() as u64),
+		byte_length: json::validation::USize64(0),
 		name: None,
 		uri: None,
 		extensions: None,
 		extras: Default::default(),
 	});
 
-	// BufferView[0] / Accessor[0]: indices
-	root.buffer_views.push(json::buffer::View {
-		buffer: json::Index::new(0),
-		byte_length: json::validation::USize64(idx_len as u64),
-		byte_offset: Some(json::validation::USize64(0)),
-		byte_stride: None,
-		name: None,
-		target: Some(Valid(json::buffer::Target::ElementArrayBuffer)),
-		extensions: None,
-		extras: Default::default(),
-	});
-	root.accessors.push(json::Accessor {
-		buffer_view: Some(json::Index::new(0)),
-		byte_offset: Some(json::validation::USize64(0)),
-		count: json::validation::USize64(idx_count as u64),
-		component_type: Valid(json::accessor::GenericComponentType(idx_component_type)),
-		type_: Valid(json::accessor::Type::Scalar),
-		extensions: None,
-		extras: Default::default(),
-		min: None,
-		max: None,
-		name: None,
-		normalized: false,
-		sparse: None,
-	});
+	let mut buffer: Vec<u8> = Vec::new();
 
-	// BufferView[1] / Accessor[1]: positions (ARRAY_BUFFER, F32, VEC3)
+	// 頂点バッファ（全グループ共有）
+	let pos_bytes = unsafe {
+		std::slice::from_raw_parts(positions.as_ptr() as *const u8, positions.len() * 12)
+	};
+	let pos_view = root.buffer_views.len() as u32;
+	buffer.extend_from_slice(pos_bytes);
 	root.buffer_views.push(json::buffer::View {
 		buffer: json::Index::new(0),
-		byte_length: json::validation::USize64(pos_len as u64),
-		byte_offset: Some(json::validation::USize64(pos_offset as u64)),
+		byte_length: json::validation::USize64(pos_bytes.len() as u64),
+		byte_offset: Some(json::validation::USize64(0)),
 		byte_stride: None,
 		name: None,
 		target: Some(Valid(json::buffer::Target::ArrayBuffer)),
 		extensions: None,
 		extras: Default::default(),
 	});
+	let pos_accessor = root.accessors.len() as u32;
 	root.accessors.push(json::Accessor {
-		buffer_view: Some(json::Index::new(1)),
+		buffer_view: Some(json::Index::new(pos_view)),
 		byte_offset: Some(json::validation::USize64(0)),
 		count: json::validation::USize64(positions.len() as u64),
 		component_type: Valid(json::accessor::GenericComponentType(
@@ -140,34 +103,111 @@ pub fn create_glb(mesh: &chijin::Mesh, shape: &Shape) -> Result<Vec<u8>, String>
 		sparse: None,
 	});
 
-	// Primitive: indexed triangles（normals なし、material は後でJSONに注入）
-	let primitive = json::mesh::Primitive {
-		attributes: {
-			let mut map = std::collections::BTreeMap::new();
-			map.insert(Valid(json::mesh::Semantic::Positions), json::Index::new(1));
-			map
-		},
-		indices: Some(json::Index::new(0)),
-		extensions: None,
-		extras: Default::default(),
-		material: None,
-		mode: Valid(json::mesh::Mode::Triangles),
-		targets: None,
-	};
-	root.meshes.push(json::Mesh {
-		extensions: None,
-		extras: Default::default(),
-		name: None,
-		primitives: vec![primitive],
-		weights: None,
-	});
+	// 色グループごとにインデックスバッファ + プリミティブを生成
+	let mut primitives: Vec<json::mesh::Primitive> = Vec::new();
+	let mut materials: Vec<serde_json::Value> = Vec::new();
 
-	// Accessor[2]: edges orphan（BIN chunk内、どのmesh primitiveにも参照されない）
-	// normals を削除したため index 2（旧: 3）
-	if !edge_data.is_empty() {
+	for (color, indices) in groups {
+		let idx_count = indices.len();
+		let (idx_bytes, idx_component_type) = if positions.len() <= 65535 {
+			let v: Vec<u16> = indices.iter().map(|&i| i as u16).collect();
+			let bytes = unsafe {
+				std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 2)
+			}
+			.to_vec();
+			(bytes, json::accessor::ComponentType::U16)
+		} else {
+			let v: Vec<u32> = indices.iter().map(|&i| i as u32).collect();
+			let bytes = unsafe {
+				std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 4)
+			}
+			.to_vec();
+			(bytes, json::accessor::ComponentType::U32)
+		};
+
+		let idx_view = root.buffer_views.len() as u32;
+		let idx_offset = buffer.len();
+		buffer.extend_from_slice(&idx_bytes);
+		while buffer.len() % 4 != 0 {
+			buffer.push(0);
+		}
 		root.buffer_views.push(json::buffer::View {
 			buffer: json::Index::new(0),
-			byte_length: json::validation::USize64(edge_len as u64),
+			byte_length: json::validation::USize64(idx_bytes.len() as u64),
+			byte_offset: Some(json::validation::USize64(idx_offset as u64)),
+			byte_stride: None,
+			name: None,
+			target: Some(Valid(json::buffer::Target::ElementArrayBuffer)),
+			extensions: None,
+			extras: Default::default(),
+		});
+		let idx_accessor = root.accessors.len() as u32;
+		root.accessors.push(json::Accessor {
+			buffer_view: Some(json::Index::new(idx_view)),
+			byte_offset: Some(json::validation::USize64(0)),
+			count: json::validation::USize64(idx_count as u64),
+			component_type: Valid(json::accessor::GenericComponentType(idx_component_type)),
+			type_: Valid(json::accessor::Type::Scalar),
+			extensions: None,
+			extras: Default::default(),
+			min: None,
+			max: None,
+			name: None,
+			normalized: false,
+			sparse: None,
+		});
+
+		let material_index = materials.len() as u32;
+		let (r, g, b) = color
+			.map(|c| (c.r as f64, c.g as f64, c.b as f64))
+			.unwrap_or((0.8, 0.8, 0.8));
+		materials.push(serde_json::json!({
+			"extensions": { "KHR_materials_unlit": {} },
+			"pbrMetallicRoughness": {
+				"baseColorFactor": [r, g, b, 1.0],
+				"metallicFactor": 0.0,
+				"roughnessFactor": 1.0
+			},
+			"alphaMode": "OPAQUE",
+			"doubleSided": true
+		}));
+
+		primitives.push(json::mesh::Primitive {
+			attributes: {
+				let mut map = std::collections::BTreeMap::new();
+				map.insert(Valid(json::mesh::Semantic::Positions), json::Index::new(pos_accessor));
+				map
+			},
+			indices: Some(json::Index::new(idx_accessor)),
+			extensions: None,
+			extras: Default::default(),
+			material: Some(json::Index::new(material_index)),
+			mode: Valid(json::mesh::Mode::Triangles),
+			targets: None,
+		});
+	}
+
+	// エッジデータ
+	let mut edge_data: Vec<f32> = Vec::new();
+	for edge in shape.edges() {
+		let segments: Vec<_> = edge.approximation_segments(0.1).collect();
+		for w in segments.windows(2) {
+			edge_data.extend_from_slice(&[
+				w[0].x as f32, w[0].y as f32, w[0].z as f32,
+				w[1].x as f32, w[1].y as f32, w[1].z as f32,
+			]);
+		}
+	}
+	let edge_accessor_index = if !edge_data.is_empty() {
+		let edge_bytes = unsafe {
+			std::slice::from_raw_parts(edge_data.as_ptr() as *const u8, edge_data.len() * 4)
+		};
+		let edge_view = root.buffer_views.len() as u32;
+		let edge_offset = buffer.len();
+		buffer.extend_from_slice(edge_bytes);
+		root.buffer_views.push(json::buffer::View {
+			buffer: json::Index::new(0),
+			byte_length: json::validation::USize64(edge_bytes.len() as u64),
 			byte_offset: Some(json::validation::USize64(edge_offset as u64)),
 			byte_stride: None,
 			name: None,
@@ -175,8 +215,9 @@ pub fn create_glb(mesh: &chijin::Mesh, shape: &Shape) -> Result<Vec<u8>, String>
 			extensions: None,
 			extras: Default::default(),
 		});
+		let accessor_index = root.accessors.len() as u32;
 		root.accessors.push(json::Accessor {
-			buffer_view: Some(json::Index::new(2)),
+			buffer_view: Some(json::Index::new(edge_view)),
 			byte_offset: Some(json::validation::USize64(0)),
 			count: json::validation::USize64((edge_data.len() / 3) as u64),
 			component_type: Valid(json::accessor::GenericComponentType(
@@ -191,15 +232,20 @@ pub fn create_glb(mesh: &chijin::Mesh, shape: &Shape) -> Result<Vec<u8>, String>
 			normalized: false,
 			sparse: None,
 		});
-		root.extras = Some(
-			serde_json::value::RawValue::from_string(
-				serde_json::to_string(&serde_json::json!({ "edgeAccessor": 2 }))
-					.map_err(|e| e.to_string())?,
-			)
-			.map_err(|e| e.to_string())?,
-		);
-	}
+		Some(accessor_index)
+	} else {
+		None
+	};
 
+	root.buffers[0].byte_length = json::validation::USize64(buffer.len() as u64);
+
+	root.meshes.push(json::Mesh {
+		extensions: None,
+		extras: Default::default(),
+		name: None,
+		primitives,
+		weights: None,
+	});
 	root.nodes.push(json::Node {
 		mesh: Some(json::Index::new(0)),
 		..Default::default()
@@ -212,24 +258,16 @@ pub fn create_glb(mesh: &chijin::Mesh, shape: &Shape) -> Result<Vec<u8>, String>
 	});
 	root.scene = Some(json::Index::new(0));
 
-	// gltf-json でシリアライズ後、KHR_materials_unlit マテリアルを serde_json で注入
-	// （gltf-json の KHR_materials_unlit は feature flag が必要なため直接注入する）
+	// JSON 組み立て・マテリアル注入・GLB バイナリ出力
 	let json_string = json::serialize::to_string(&root).map_err(|e| e.to_string())?;
 	let mut json_val: serde_json::Value =
 		serde_json::from_str(&json_string).map_err(|e| e.to_string())?;
 
 	json_val["extensionsUsed"] = serde_json::json!(["KHR_materials_unlit"]);
-	json_val["materials"] = serde_json::json!([{
-		"extensions": { "KHR_materials_unlit": {} },
-		"pbrMetallicRoughness": {
-			"baseColorFactor": [0.8, 0.8, 0.8, 1.0],
-			"metallicFactor": 0.0,
-			"roughnessFactor": 1.0
-		},
-		"alphaMode": "OPAQUE",
-		"doubleSided": true
-	}]);
-	json_val["meshes"][0]["primitives"][0]["material"] = serde_json::json!(0);
+	json_val["materials"] = serde_json::Value::Array(materials);
+	if let Some(idx) = edge_accessor_index {
+		json_val["extras"] = serde_json::json!({ "edgeAccessor": idx });
+	}
 
 	let json_string = serde_json::to_string(&json_val).map_err(|e| e.to_string())?;
 	let mut json_bytes = json_string.into_bytes();
@@ -242,8 +280,7 @@ pub fn create_glb(mesh: &chijin::Mesh, shape: &Shape) -> Result<Vec<u8>, String>
 	glb.write_all(b"glTF").unwrap();
 	glb.write_all(&2u32.to_le_bytes()).unwrap();
 	glb.write_all(&(total_size as u32).to_le_bytes()).unwrap();
-	glb.write_all(&(json_bytes.len() as u32).to_le_bytes())
-		.unwrap();
+	glb.write_all(&(json_bytes.len() as u32).to_le_bytes()).unwrap();
 	glb.write_all(b"JSON").unwrap();
 	glb.write_all(&json_bytes).unwrap();
 	glb.write_all(&(buffer.len() as u32).to_le_bytes()).unwrap();
@@ -261,15 +298,15 @@ mod tests {
 
 	use std::collections::HashMap;
 
-	/// cargo test の作業ディレクトリは api/ (Cargo.toml のある場所)
 	const TEST_BREP_PATH: &str = "../public/PA-001-DF7.brep";
 	const TEST_KEY: &str = "test_brep_sha256";
 
 	fn load_test_shape() -> Shape {
 		let data = std::fs::read(TEST_BREP_PATH)
 			.expect("テスト用BRepファイルが見つかりません: ../public/PA-001-DF7.brep");
-		Shape::read_brep_text(&mut std::io::Cursor::new(&data))
+		Shape::read_brep_color(&mut std::io::Cursor::new(&data))
 			.or_else(|_| Shape::read_brep_bin(&mut std::io::Cursor::new(&data)))
+			.or_else(|_| Shape::read_brep_text(&mut std::io::Cursor::new(&data)))
 			.expect("テスト用BRepファイルが読み込めません: ../public/PA-001-DF7.brep")
 	}
 
@@ -294,12 +331,9 @@ mod tests {
 			"shape() がエラーを返しました: {:?}",
 			result.err()
 		);
-
 		let glb = result.unwrap();
 		assert!(!glb.is_empty());
-		// GLB マジックバイト確認
 		assert_eq!(&glb[0..4], b"glTF");
-		// GLB バージョン = 2
 		assert_eq!(u32::from_le_bytes(glb[4..8].try_into().unwrap()), 2);
 	}
 
@@ -307,14 +341,9 @@ mod tests {
 	fn shape_missing_brep_returns_err() {
 		let result = shape(&step_node("nonexistent"), HashMap::new());
 		assert!(result.is_err());
-		assert!(
-			result.unwrap_err().contains("not found"),
-			"エラーメッセージに 'not found' が含まれるべき"
-		);
+		assert!(result.unwrap_err().contains("not found"));
 	}
 
-	/// ../public/PA-001-DF7.brep → ../public/PA-001-DF7.glb を生成する
-	/// cargo test -p api -- generate_glb --include-ignored で実行
 	#[test]
 	#[ignore]
 	fn generate_glb() {
@@ -331,12 +360,8 @@ mod tests {
 			a: Box::new(step_node("a")),
 			b: Box::new(step_node("b")),
 		});
-
 		let result = shape(&node, HashMap::new());
 		assert!(result.is_err());
-		assert!(
-			result.unwrap_err().contains("Only StepNode"),
-			"エラーメッセージに 'Only StepNode' が含まれるべき"
-		);
+		assert!(result.unwrap_err().contains("Only StepNode"));
 	}
 }

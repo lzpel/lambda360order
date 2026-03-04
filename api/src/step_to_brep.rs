@@ -84,7 +84,7 @@ pub async fn step_pipeline(
 	// chijin API: read_step(&mut impl Read) — Cursor でインメモリストリームを橋渡し
 	let step_data_clone = step_data.clone();
 	let task_read_step = tokio::task::spawn_blocking(move || {
-		Shape::read_step(&mut std::io::Cursor::new(step_data_clone))
+		Shape::read_step_with_colors(&mut std::io::Cursor::new(step_data_clone))
 	});
 	let shape_result = task_read_step
 		.await
@@ -100,10 +100,10 @@ pub async fn step_pipeline(
 
 	progress(70, "BRepバイナリ書き込み中".to_string()).await;
 
-	// chijin API: write_brep_bin(&mut impl Write) — Vec<u8> バッファに直接書き込み
+	// chijin API: write_brep_color(&mut impl Write) — CHJC形式（色メタデータ付きBRep）
 	let mut brep_data: Vec<u8> = Vec::new();
 	let r = shape
-		.write_brep_bin(&mut brep_data)
+		.write_brep_color(&mut brep_data)
 		.map_err(|e| format!("BRep書き込み失敗: {e:?}"));
 	if let Err(ref e) = r {
 		progress(101, e.clone()).await;

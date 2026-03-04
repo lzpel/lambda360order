@@ -659,9 +659,9 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "chijin"
-version = "0.2.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffd4ee1eed942ec247431b022482b9db31cc1fbc1e4c90491233461efa73dfcd"
+checksum = "f9c04a75af95679804366b0fdf4da0be03d0e48a9d86e6d6ccc0904df25b2f43"
 dependencies = [
  "cmake",
  "cxx",
