@@ -1,5 +1,5 @@
 FROM public.ecr.aws/lambda/provided:al2023
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN dnf install -y git gcc g++ cmake
-RUN git clone https://github.com/lzpel/chijin && sh -c ". $HOME/.cargo/env && make -C chijin test" && cp -rf chijin/target/occt / && rm -rf chijin
+RUN git clone https://github.com/lzpel/chijin && sh -c "cd chijin && . $HOME/.cargo/env && cargo test --features color && cp -rf target/occt /" && rm -rf chijin
 ENV OCCT_ROOT=/occt

@@ -23,7 +23,9 @@ pub fn create_glb(shape: &Shape) -> Result<Vec<u8>, String> {
 		let rgb = shape.colormap.get(&chijin::TShapeId(face_id)).copied();
 		let key = rgb.map(rgb_key).unwrap_or((0, 0, 0));
 		let entry = groups.entry(key).or_insert((rgb, Vec::new()));
-		entry.1.extend_from_slice(&mesh.indices[tri_idx * 3..tri_idx * 3 + 3]);
+		entry
+			.1
+			.extend_from_slice(&mesh.indices[tri_idx * 3..tri_idx * 3 + 3]);
 	}
 
 	// グループが1つかつ色なし → グレー単色（従来と同等）
@@ -111,17 +113,13 @@ fn build_glb(
 		let idx_count = indices.len();
 		let (idx_bytes, idx_component_type) = if positions.len() <= 65535 {
 			let v: Vec<u16> = indices.iter().map(|&i| i as u16).collect();
-			let bytes = unsafe {
-				std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 2)
-			}
-			.to_vec();
+			let bytes = unsafe { std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 2) }
+				.to_vec();
 			(bytes, json::accessor::ComponentType::U16)
 		} else {
 			let v: Vec<u32> = indices.iter().map(|&i| i as u32).collect();
-			let bytes = unsafe {
-				std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 4)
-			}
-			.to_vec();
+			let bytes = unsafe { std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 4) }
+				.to_vec();
 			(bytes, json::accessor::ComponentType::U32)
 		};
 
@@ -175,7 +173,10 @@ fn build_glb(
 		primitives.push(json::mesh::Primitive {
 			attributes: {
 				let mut map = std::collections::BTreeMap::new();
-				map.insert(Valid(json::mesh::Semantic::Positions), json::Index::new(pos_accessor));
+				map.insert(
+					Valid(json::mesh::Semantic::Positions),
+					json::Index::new(pos_accessor),
+				);
 				map
 			},
 			indices: Some(json::Index::new(idx_accessor)),
@@ -193,8 +194,12 @@ fn build_glb(
 		let segments: Vec<_> = edge.approximation_segments(0.1).collect();
 		for w in segments.windows(2) {
 			edge_data.extend_from_slice(&[
-				w[0].x as f32, w[0].y as f32, w[0].z as f32,
-				w[1].x as f32, w[1].y as f32, w[1].z as f32,
+				w[0].x as f32,
+				w[0].y as f32,
+				w[0].z as f32,
+				w[1].x as f32,
+				w[1].y as f32,
+				w[1].z as f32,
 			]);
 		}
 	}
@@ -280,7 +285,8 @@ fn build_glb(
 	glb.write_all(b"glTF").unwrap();
 	glb.write_all(&2u32.to_le_bytes()).unwrap();
 	glb.write_all(&(total_size as u32).to_le_bytes()).unwrap();
-	glb.write_all(&(json_bytes.len() as u32).to_le_bytes()).unwrap();
+	glb.write_all(&(json_bytes.len() as u32).to_le_bytes())
+		.unwrap();
 	glb.write_all(b"JSON").unwrap();
 	glb.write_all(&json_bytes).unwrap();
 	glb.write_all(&(buffer.len() as u32).to_le_bytes()).unwrap();
