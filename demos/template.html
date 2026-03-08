@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+</head>
+<body>
+    <h1>{{title}}</h1>
+    <!-- Load the built widget.js -->
+    <script src="https://unpkg.com/lambda360form@{{version}}/dist/lambda360form.js"></script>
+    <div id="custom-box" style="width: 1000px; height: 600px; border: 1px solid #ccc;"></div>
+    <script type="text/javascript">
+        const { initLambda360 } = window.Lambda360;
+        {{script | indent(8) | safe}}
+        Lambda360.initLambda360('#custom-box', {
+            params: params,
+            lambda: lambda
+        });
+    </script>
+</body>
+</html>

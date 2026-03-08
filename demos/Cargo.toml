@@ -1,0 +1,11 @@
+[package]
+name = "demos"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "demos"
+path = "main.rs"
+
+[dependencies]
+minijinja = { version = "2", features = ["loader"] }
