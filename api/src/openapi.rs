@@ -212,7 +212,34 @@ pub struct BadRequestResponse {
 }
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct BorderOutput {}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ButtonOutput {
+	pub r#action: String,
+	pub r#label: String,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct ForbiddenResponse {}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type")]
+pub enum InputDefinition {
+	#[serde(rename = "upload")]
+	Upload(UploadInput),
+	#[serde(rename = "text")]
+	Text(TextInput),
+	#[serde(rename = "number")]
+	Number(NumberInput),
+	#[serde(rename = "select")]
+	Select(SelectInput),
+}
+impl Default for InputDefinition {
+	fn default() -> Self {
+		Self::Upload(Default::default())
+	}
+}
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct IntersectNode {
@@ -221,7 +248,33 @@ pub struct IntersectNode {
 }
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct MessageOutput {
+	pub r#label: String,
+	pub r#messageType: String,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct NoContentResponse {}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct NumberConstraintEnum {
+	pub r#enum: Vec<f64>,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct NumberConstraintRange {
+	pub r#max: Option<f64>,
+	pub r#min: Option<f64>,
+	pub r#step: Option<f64>,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct NumberInput {
+	pub r#constraint: Option<serde_json::Value>,
+	pub r#default: Option<f64>,
+	pub r#label: String,
+	pub r#unit: Option<String>,
+}
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(untagged)]
@@ -232,6 +285,24 @@ pub enum NumberOrExpr {
 impl Default for NumberOrExpr {
 	fn default() -> Self {
 		Self::Variant0(Default::default())
+	}
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type")]
+pub enum Output {
+	#[serde(rename = "shape")]
+	Shape(ShapeOutput),
+	#[serde(rename = "border")]
+	Border(BorderOutput),
+	#[serde(rename = "message")]
+	Message(MessageOutput),
+	#[serde(rename = "button")]
+	Button(ButtonOutput),
+}
+impl Default for Output {
+	fn default() -> Self {
+		Self::Shape(Default::default())
 	}
 }
 
@@ -246,6 +317,19 @@ pub struct RotateNode {
 pub struct ScaleNode {
 	pub r#factor: NumberOrExpr,
 	pub r#shape: Box<ShapeNode>,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct SelectInput {
+	pub r#default: Option<String>,
+	pub r#label: String,
+	pub r#options: Vec<SelectOption>,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct SelectOption {
+	pub r#label: String,
+	pub r#value: String,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -280,6 +364,12 @@ pub struct ShapeNodeBase {
 }
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ShapeOutput {
+	pub r#label: Option<String>,
+	pub r#shape: Box<ShapeNode>,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct StepNode {
 	pub r#content_hash: String,
 	pub r#description: Option<String>,
@@ -306,6 +396,14 @@ pub struct SubtractNode {
 }
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct TextInput {
+	pub r#default: Option<String>,
+	pub r#label: String,
+	pub r#placeholder: Option<String>,
+	pub r#variant: Option<String>,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct TranslateNode {
 	pub r#shape: Box<ShapeNode>,
 	pub r#xyz: Vec<NumberOrExpr>,
@@ -316,6 +414,13 @@ pub type Uuid = uuid::Uuid;
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct UnionShapeNode {
 	pub r#shapes: Vec<Box<ShapeNode>>,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct UploadInput {
+	pub r#accept: Option<String>,
+	pub r#label: String,
+	pub r#maxSize: Option<i64>,
 }
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -563,7 +668,7 @@ pub fn axum_router_operations<S: ApiInterface + Sync + Send + 'static>(
 		),
 	);
 	let router = router.route("/openapi.json", axum::routing::get(|| async move{
-			r###"{"components":{"schemas":{"BadRequestResponse":{"properties":{"body":{"type":"string"}},"required":["body"],"type":"object"},"ForbiddenResponse":{"type":"object"},"IntersectNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン共通部分 (BRepAlgoAPI_Common)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["intersect"],"type":"string"}},"required":["op","a","b"],"type":"object"},"NoContentResponse":{"type":"object"},"NumberOrExpr":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"RotateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"回転","properties":{"axis":{"description":"回転軸ベクトル [ax, ay, az]","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"deg":{"allOf":[{"$ref":"#/components/schemas/NumberOrExpr"}],"description":"回転角度 (度)"},"op":{"enum":["rotate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","axis","deg"],"type":"object"},"ScaleNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"一様拡大縮小","properties":{"factor":{"$ref":"#/components/schemas/NumberOrExpr"},"op":{"enum":["scale"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","factor"],"type":"object"},"ShapeNode":{"anyOf":[{"$ref":"#/components/schemas/StepNode"},{"$ref":"#/components/schemas/UnionShapeNode"},{"$ref":"#/components/schemas/IntersectNode"},{"$ref":"#/components/schemas/SubtractNode"},{"$ref":"#/components/schemas/ScaleNode"},{"$ref":"#/components/schemas/TranslateNode"},{"$ref":"#/components/schemas/RotateNode"},{"$ref":"#/components/schemas/StretchNode"}],"description":"★ここが主役：discriminated union を \"ShapeNode\" として定義\nこれが OpenAPI で oneOf + discriminator になりやすい"},"ShapeNodeBase":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"StepNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"STEPファイルの読み込み","properties":{"content_hash":{"description":"STEPファイルのsha256ハッシュ値 (hex64)","type":"string"},"description":{"description":"表示用メモ（GLBキャッシュキーに影響しない）","type":"string"},"op":{"enum":["step"],"type":"string"}},"required":["op","content_hash"],"type":"object"},"StepStatusBody":{"properties":{"message":{"type":"string"},"progress":{"format":"int32","type":"integer"},"timestamp":{"format":"int64","type":"integer"}},"required":["timestamp","progress","message"],"type":"object"},"StretchNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"伸縮: 切断面で形状を分割して指定方向に伸ばす","properties":{"cut":{"description":"切断面の座標 [cx, cy, cz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"delta":{"description":"各軸方向の伸縮量 [dx, dy, dz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"op":{"enum":["stretch"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","cut","delta"],"type":"object"},"SubtractNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["subtract"],"type":"string"}},"required":["op","a","b"],"type":"object"},"TranslateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"平行移動","properties":{"op":{"enum":["translate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"},"xyz":{"description":"移動量 [x, y, z] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"}},"required":["op","shape","xyz"],"type":"object"},"UUID":{"format":"uuid","type":"string"},"UnionShapeNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン合体 (BRepAlgoAPI_Fuse)","properties":{"op":{"enum":["union"],"type":"string"},"shapes":{"items":{"$ref":"#/components/schemas/ShapeNode"},"type":"array"}},"required":["op","shapes"],"type":"object"},"UploadUrlBody":{"properties":{"id":{"$ref":"#/components/schemas/UUID"},"url":{"type":"string"}},"required":["id","url"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/shape":{"post":{"description":"ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す","operationId":"Shape_compute","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ShapeNode"}}},"required":true},"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}},"/step/test":{"post":{"description":"ローカルテスト用（--features debug 時のみ有効）：\nファイルを受け取り、upload_url → S3アップロード → execute → status確認 の\n一連のフローを実行してcontent_hashを返します。","operationId":"Step_test","requestBody":{"content":{"application/octet-stream":{"schema":{"format":"binary","type":"string"}}},"required":true},"responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."},"500":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"Server error"}}}},"/step/upload":{"post":{"description":"アップロード用のURLとIDを取得します。\nフロントエンドはこのURLに対して実際のファイルをアップロードします。","operationId":"Step_upload_url","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UploadUrlBody"}}},"description":"The request has succeeded."}}}},"/step/{id}/execute":{"post":{"description":"指定した ID のファイルの変換処理（STEP -\u003e BREP）を実行します。\nダウンロード・変換・アップロードがすべて完了したときに 200 を返します。\n失敗した場合は 500 とエラーメッセージを返します。\n進捗は処理中も /step/{id}/status で確認できます。\nレスポンスボディは変換後ファイルの content_hash です。","operationId":"Step_execute","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"}],"responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."},"500":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"Server error"}}}},"/step/{id}/status":{"get":{"description":"変換処理の最新進捗を返します。\n- progress 100: 正常終了\n- progress 101以上: 異常終了\n変換がまだ開始されていない場合は 404 を返します。","operationId":"Step_status","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StepStatusBody"}}},"description":"The request has succeeded."},"404":{"description":"The server cannot find the requested resource."}}}},"/version":{"get":{"description":"このAPIサーバーのバージョンと使用しているS3バケット名を返します。","operationId":"version","responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"/api","variables":{}}]}"###
+			r###"{"components":{"schemas":{"BadRequestResponse":{"properties":{"body":{"type":"string"}},"required":["body"],"type":"object"},"BorderOutput":{"properties":{"type":{"enum":["border"],"type":"string"}},"required":["type"],"type":"object"},"ButtonOutput":{"properties":{"action":{"enum":["email","slack"],"type":"string"},"label":{"type":"string"},"type":{"enum":["button"],"type":"string"}},"required":["type","label","action"],"type":"object"},"ForbiddenResponse":{"type":"object"},"InputDefinition":{"anyOf":[{"$ref":"#/components/schemas/UploadInput"},{"$ref":"#/components/schemas/TextInput"},{"$ref":"#/components/schemas/NumberInput"},{"$ref":"#/components/schemas/SelectInput"}]},"IntersectNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン共通部分 (BRepAlgoAPI_Common)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["intersect"],"type":"string"}},"required":["op","a","b"],"type":"object"},"MessageOutput":{"properties":{"label":{"type":"string"},"messageType":{"enum":["warning","error","text","info"],"type":"string"},"type":{"enum":["message"],"type":"string"}},"required":["type","label","messageType"],"type":"object"},"NoContentResponse":{"type":"object"},"NumberConstraintEnum":{"properties":{"enum":{"items":{"format":"double","type":"number"},"type":"array"}},"required":["enum"],"type":"object"},"NumberConstraintRange":{"properties":{"max":{"format":"double","type":"number"},"min":{"format":"double","type":"number"},"step":{"format":"double","type":"number"}},"type":"object"},"NumberInput":{"properties":{"constraint":{"anyOf":[{"$ref":"#/components/schemas/NumberConstraintRange"},{"$ref":"#/components/schemas/NumberConstraintEnum"}]},"default":{"format":"double","type":"number"},"label":{"type":"string"},"type":{"enum":["number"],"type":"string"},"unit":{"type":"string"}},"required":["type","label"],"type":"object"},"NumberOrExpr":{"anyOf":[{"format":"double","type":"number"},{"type":"string"}],"description":"数値定数または $式 (例: 100.0, \"$width\", \"$width * 0.5 + 50\")"},"Output":{"anyOf":[{"$ref":"#/components/schemas/ShapeOutput"},{"$ref":"#/components/schemas/BorderOutput"},{"$ref":"#/components/schemas/MessageOutput"},{"$ref":"#/components/schemas/ButtonOutput"}]},"RotateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"回転","properties":{"axis":{"description":"回転軸ベクトル [ax, ay, az]","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"deg":{"allOf":[{"$ref":"#/components/schemas/NumberOrExpr"}],"description":"回転角度 (度)"},"op":{"enum":["rotate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","axis","deg"],"type":"object"},"ScaleNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"一様拡大縮小","properties":{"factor":{"$ref":"#/components/schemas/NumberOrExpr"},"op":{"enum":["scale"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","factor"],"type":"object"},"SelectInput":{"properties":{"default":{"type":"string"},"label":{"type":"string"},"options":{"items":{"$ref":"#/components/schemas/SelectOption"},"type":"array"},"type":{"enum":["select"],"type":"string"}},"required":["type","label","options"],"type":"object"},"SelectOption":{"properties":{"label":{"type":"string"},"value":{"type":"string"}},"required":["value","label"],"type":"object"},"ShapeNode":{"anyOf":[{"$ref":"#/components/schemas/StepNode"},{"$ref":"#/components/schemas/UnionShapeNode"},{"$ref":"#/components/schemas/IntersectNode"},{"$ref":"#/components/schemas/SubtractNode"},{"$ref":"#/components/schemas/ScaleNode"},{"$ref":"#/components/schemas/TranslateNode"},{"$ref":"#/components/schemas/RotateNode"},{"$ref":"#/components/schemas/StretchNode"}],"description":"★ここが主役：discriminated union を \"ShapeNode\" として定義\nこれが OpenAPI で oneOf + discriminator になりやすい"},"ShapeNodeBase":{"description":"形状演算ノードの共通フィールド（任意）\n※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利","properties":{"op":{"type":"string"}},"required":["op"],"type":"object"},"ShapeOutput":{"properties":{"label":{"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"},"type":{"enum":["shape"],"type":"string"}},"required":["type","shape"],"type":"object"},"StepNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"STEPファイルの読み込み","properties":{"content_hash":{"description":"STEPファイルのsha256ハッシュ値 (hex64)","type":"string"},"description":{"description":"表示用メモ（GLBキャッシュキーに影響しない）","type":"string"},"op":{"enum":["step"],"type":"string"}},"required":["op","content_hash"],"type":"object"},"StepStatusBody":{"properties":{"message":{"type":"string"},"progress":{"format":"int32","type":"integer"},"timestamp":{"format":"int64","type":"integer"}},"required":["timestamp","progress","message"],"type":"object"},"StretchNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"伸縮: 切断面で形状を分割して指定方向に伸ばす","properties":{"cut":{"description":"切断面の座標 [cx, cy, cz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"delta":{"description":"各軸方向の伸縮量 [dx, dy, dz] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"},"op":{"enum":["stretch"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"}},"required":["op","shape","cut","delta"],"type":"object"},"SubtractNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut)","properties":{"a":{"$ref":"#/components/schemas/ShapeNode"},"b":{"$ref":"#/components/schemas/ShapeNode"},"op":{"enum":["subtract"],"type":"string"}},"required":["op","a","b"],"type":"object"},"TextInput":{"properties":{"default":{"type":"string"},"label":{"type":"string"},"placeholder":{"type":"string"},"type":{"enum":["text"],"type":"string"},"variant":{"enum":["text","area","email"],"type":"string"}},"required":["type","label"],"type":"object"},"TranslateNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"平行移動","properties":{"op":{"enum":["translate"],"type":"string"},"shape":{"$ref":"#/components/schemas/ShapeNode"},"xyz":{"description":"移動量 [x, y, z] (mm)","items":{"$ref":"#/components/schemas/NumberOrExpr"},"type":"array"}},"required":["op","shape","xyz"],"type":"object"},"UUID":{"format":"uuid","type":"string"},"UnionShapeNode":{"allOf":[{"$ref":"#/components/schemas/ShapeNodeBase"}],"description":"ブーリアン合体 (BRepAlgoAPI_Fuse)","properties":{"op":{"enum":["union"],"type":"string"},"shapes":{"items":{"$ref":"#/components/schemas/ShapeNode"},"type":"array"}},"required":["op","shapes"],"type":"object"},"UploadInput":{"properties":{"accept":{"type":"string"},"label":{"type":"string"},"maxSize":{"format":"int64","type":"integer"},"type":{"enum":["upload"],"type":"string"}},"required":["type","label"],"type":"object"},"UploadUrlBody":{"properties":{"id":{"$ref":"#/components/schemas/UUID"},"url":{"type":"string"}},"required":["id","url"],"type":"object"}}},"info":{"title":"Lambda360 API","version":"0.0.0"},"openapi":"3.0.0","paths":{"/shape":{"post":{"description":"ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す","operationId":"Shape_compute","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ShapeNode"}}},"required":true},"responses":{"200":{"content":{"model/gltf-binary":{"schema":{"format":"binary","type":"string"}}},"description":"The request has succeeded."}}}},"/step/test":{"post":{"description":"ローカルテスト用（--features debug 時のみ有効）：\nファイルを受け取り、upload_url → S3アップロード → execute → status確認 の\n一連のフローを実行してcontent_hashを返します。","operationId":"Step_test","requestBody":{"content":{"application/octet-stream":{"schema":{"format":"binary","type":"string"}}},"required":true},"responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."},"500":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"Server error"}}}},"/step/upload":{"post":{"description":"アップロード用のURLとIDを取得します。\nフロントエンドはこのURLに対して実際のファイルをアップロードします。","operationId":"Step_upload_url","responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UploadUrlBody"}}},"description":"The request has succeeded."}}}},"/step/{id}/execute":{"post":{"description":"指定した ID のファイルの変換処理（STEP -\u003e BREP）を実行します。\nダウンロード・変換・アップロードがすべて完了したときに 200 を返します。\n失敗した場合は 500 とエラーメッセージを返します。\n進捗は処理中も /step/{id}/status で確認できます。\nレスポンスボディは変換後ファイルの content_hash です。","operationId":"Step_execute","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"}],"responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."},"500":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"Server error"}}}},"/step/{id}/status":{"get":{"description":"変換処理の最新進捗を返します。\n- progress 100: 正常終了\n- progress 101以上: 異常終了\n変換がまだ開始されていない場合は 404 を返します。","operationId":"Step_status","parameters":[{"in":"path","name":"id","required":true,"schema":{"$ref":"#/components/schemas/UUID"},"style":"simple"}],"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StepStatusBody"}}},"description":"The request has succeeded."},"404":{"description":"The server cannot find the requested resource."}}}},"/version":{"get":{"description":"このAPIサーバーのバージョンと使用しているS3バケット名を返します。","operationId":"version","responses":{"200":{"content":{"text/plain":{"schema":{"type":"string"}}},"description":"The request has succeeded."}}}}},"servers":[{"description":"Main server","url":"/api","variables":{}}]}"###
 		}))
 		.route("/ui", axum::routing::get(|| async move{
 			axum::response::Html(r###"

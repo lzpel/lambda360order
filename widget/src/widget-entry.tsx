@@ -17,7 +17,7 @@ function initLambda360(selector: string | HTMLElement, options: Lambda360FormPro
   const root = createRoot(container);
   root.render(
     <React.StrictMode>
-      <Lambda360Form params={options.params} lambda={options.lambda} origin_url={options.origin_url || "https://dfrujiq0byx89.cloudfront.net"} />
+      <Lambda360Form input={options.input} lambda={options.lambda} origin_url={options.origin_url || "https://dfrujiq0byx89.cloudfront.net"} />
     </React.StrictMode>
   );
   return root;

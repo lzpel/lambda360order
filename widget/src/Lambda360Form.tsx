@@ -1,173 +1,276 @@
 "use client";
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import Lambda360Shape from './Lambda360Shape';
-
-interface ParamConfig {
-    type: 'number' | 'color';
-    label: string;
-    unit?: string;
-    default: any;
-    constraint?: {
-        min?: number;
-        max?: number;
-        step?: number;
-        enum?: any[];
-    };
-}
-
-import type { ShapeNode } from '@/out/client';
+import type { InputDefinition, Output } from '@/out/client';
 
 export interface Lambda360FormProps {
-    params: Record<string, ParamConfig>;
-    lambda: (params: Record<string, any>) => { shape: ShapeNode; color?: string; price?: number };
+    input: Record<string, InputDefinition>;
+    lambda: (input: Record<string, any>) => Output[];
     origin_url?: string;
 }
 
-export default function Lambda360Form({ params: schemaParams, lambda, origin_url }: Lambda360FormProps) {
-    // 初期値でstateを初期化
-    const [paramValues, setParamValues] = useState<Record<string, any>>(() => {
+export default function Lambda360Form({ input: inputSchema, lambda, origin_url }: Lambda360FormProps) {
+    const [values, setValues] = useState<Record<string, any>>(() => {
         const initial: Record<string, any> = {};
-        for (const [key, config] of Object.entries(schemaParams || {})) {
-            initial[key] = config.default;
+        for (const [key, def] of Object.entries(inputSchema || {})) {
+            if (def.type === 'number' || def.type === 'text' || def.type === 'select') {
+                initial[key] = (def as any).default ?? (def.type === 'number' ? 0 : '');
+            } else {
+                initial[key] = null;
+            }
         }
         return initial;
     });
 
-    // stateが変更されるたびにshapeを再評価
-    const { shape: evaluatedShape, price } = useMemo(() => {
+    const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+    const outputs = useMemo(() => {
         try {
-            return lambda(paramValues);
+            return lambda(values);
         } catch (e) {
             console.error("Lambda function evaluation failed:", e);
-            // フォールバック（仮として空のノードを返す）
-            return { shape: { op: "identity", shape: undefined } as unknown as ShapeNode };
+            return [];
         }
-    }, [lambda, paramValues]);
+    }, [lambda, values]);
 
     const handleChange = (key: string, value: any) => {
-        setParamValues(prev => ({ ...prev, [key]: value }));
+        setValues(prev => ({ ...prev, [key]: value }));
     };
 
-    return (
-        <div style={{
-            display: 'flex',
-            width: '100%',
-            height: '100%',
-            minHeight: '600px',
-            margin: 0,
-            padding: 0,
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            overflow: 'hidden',
-        }}>
-            {/* Left: 3D Viewer */}
-            <Lambda360Shape
-                shape={evaluatedShape}
-                backgroundColor="#f5f5f5"
-                edgeColor="#333333"
-                showEdges={true}
-                showViewMenu={true}
-                orthographic={true}
-                preserveCamera={true}
-                origin_url={origin_url}
-                upAxis="Z"
-                style={{ flex: 1, position: 'relative', backgroundColor: '#f5f5f5', borderRight: '1px solid #ddd', minWidth: 0, minHeight: 0, height: '100%' }}
-            />
+    const renderInput = (key: string, def: InputDefinition) => {
+        const value = values[key];
 
-            {/* Right: Order Form */}
-            <div style={{
-                width: '400px',
-                backgroundColor: '#ffffff',
-                padding: '24px',
-                overflowY: 'auto',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '24px',
-            }}>
-                <div>
-                    <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px', color: '#1a1a1a' }}>
-                        セミカスタムオーダー
-                    </h1>
-                    <p style={{ fontSize: '14px', color: '#666' }}>
-                        パラメータを指定して3Dモデルを動的に生成します。
-                    </p>
+        if (def.type === 'upload') {
+            return (
+                <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>
+                    <div
+                        style={{
+                            border: '2px dashed #ccc',
+                            borderRadius: '6px',
+                            padding: '16px',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            backgroundColor: value ? '#f0f8ff' : '#fafafa',
+                        }}
+                        onClick={() => fileInputRefs.current[key]?.click()}
+                    >
+                        {value ? (
+                            <span style={{ fontSize: '13px', color: '#0066cc' }}>
+                                {typeof value === 'string' ? value : (value as File).name}
+                            </span>
+                        ) : (
+                            <span style={{ fontSize: '13px', color: '#999' }}>クリックしてファイルを選択</span>
+                        )}
+                    </div>
+                    <input
+                        ref={el => { fileInputRefs.current[key] = el; }}
+                        type="file"
+                        accept={def.accept}
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                                alert(`アップロード機能は未実装です。選択されたファイル: ${file.name}`);
+                                handleChange(key, file);
+                            }
+                        }}
+                    />
                 </div>
+            );
+        }
 
-                {/* Dynamic Form Controls */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {price !== undefined && (
-                        <div style={{ padding: '12px', backgroundColor: '#eef', borderRadius: '4px', fontWeight: 'bold', color: '#333' }}>
-                            参考価格: {price.toLocaleString()} 円
-                        </div>
+        if (def.type === 'text') {
+            const variant = def.variant ?? 'text';
+            return (
+                <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>
+                    {variant === 'area' ? (
+                        <textarea
+                            value={value ?? ''}
+                            placeholder={def.placeholder}
+                            onChange={(e) => handleChange(key, e.target.value)}
+                            rows={4}
+                            style={{
+                                padding: '10px',
+                                border: '1px solid #ddd',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                resize: 'vertical',
+                            }}
+                        />
+                    ) : (
+                        <input
+                            type={variant === 'email' ? 'email' : 'text'}
+                            value={value ?? ''}
+                            placeholder={def.placeholder}
+                            onChange={(e) => handleChange(key, e.target.value)}
+                            style={{
+                                padding: '10px',
+                                border: '1px solid #ddd',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                            }}
+                        />
                     )}
-                    {Object.entries(schemaParams || {}).map(([key, config]) => {
-                        const currentValue = paramValues[key];
-
-                        return (
-                            <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <label style={{ fontSize: '14px', fontWeight: '600', color: '#333', display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>{config.label} <span style={{ color: '#666', fontWeight: 'normal' }}>({key})</span></span>
-                                    {config.type === 'number' && <span>{currentValue} {config.unit}</span>}
-                                </label>
-
-                                {config.constraint?.enum ? (
-                                    // Select box for enum
-                                    <select
-                                        value={currentValue}
-                                        onChange={(e) => {
-                                            const val = config.type === 'number' ? Number(e.target.value) : e.target.value;
-                                            handleChange(key, val);
-                                        }}
-                                        style={{
-                                            padding: '10px',
-                                            border: '1px solid #ddd',
-                                            borderRadius: '6px',
-                                            fontSize: '14px',
-                                            backgroundColor: '#fff',
-                                        }}
-                                    >
-                                        {config.constraint.enum.map(opt => (
-                                            <option key={opt} value={opt}>{opt}</option>
-                                        ))}
-                                    </select>
-                                ) : config.type === 'number' ? (
-                                    // Range slider for number
-                                    <input
-                                        type="range"
-                                        min={config.constraint?.min ?? 0}
-                                        max={config.constraint?.max ?? 100}
-                                        step={config.constraint?.step ?? 1}
-                                        value={currentValue}
-                                        onChange={(e) => handleChange(key, Number(e.target.value))}
-                                        style={{ width: '100%' }}
-                                    />
-                                ) : config.type === 'color' ? (
-                                    // Color picker
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <input
-                                            type="color"
-                                            value={currentValue}
-                                            onChange={(e) => handleChange(key, e.target.value)}
-                                            style={{
-                                                width: '40px',
-                                                height: '40px',
-                                                padding: '0',
-                                                border: '1px solid #ddd',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer'
-                                            }}
-                                        />
-                                        <span style={{ fontSize: '14px', color: '#666' }}>{currentValue}</span>
-                                    </div>
-                                ) : null}
-                            </div>
-                        );
-                    })}
                 </div>
+            );
+        }
 
-                <div style={{ marginTop: 'auto' }}>
-                    <button style={{
+        if (def.type === 'number') {
+            const constraint = def.constraint as any;
+            if (constraint?.enum) {
+                return (
+                    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+                            {def.label}{def.unit && <span style={{ color: '#666', fontWeight: 'normal' }}> ({def.unit})</span>}
+                        </label>
+                        <select
+                            value={value}
+                            onChange={(e) => handleChange(key, Number(e.target.value))}
+                            style={{
+                                padding: '10px',
+                                border: '1px solid #ddd',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                backgroundColor: '#fff',
+                            }}
+                        >
+                            {constraint.enum.map((opt: number) => (
+                                <option key={opt} value={opt}>{opt}{def.unit ? ` ${def.unit}` : ''}</option>
+                            ))}
+                        </select>
+                    </div>
+                );
+            }
+            return (
+                <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: '600', color: '#333', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{def.label}{def.unit && <span style={{ color: '#666', fontWeight: 'normal' }}> ({def.unit})</span>}</span>
+                        <span style={{ color: '#333' }}>{value}{def.unit ? ` ${def.unit}` : ''}</span>
+                    </label>
+                    <input
+                        type="range"
+                        min={constraint?.min ?? 0}
+                        max={constraint?.max ?? 100}
+                        step={constraint?.step ?? 1}
+                        value={value}
+                        onChange={(e) => handleChange(key, Number(e.target.value))}
+                        style={{ width: '100%' }}
+                    />
+                </div>
+            );
+        }
+
+        if (def.type === 'select') {
+            const options = def.options ?? [];
+            const useButtons = options.length <= 5;
+            return (
+                <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>
+                    {useButtons ? (
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {options.map(opt => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => handleChange(key, opt.value)}
+                                    style={{
+                                        padding: '8px 16px',
+                                        border: '1px solid',
+                                        borderColor: value === opt.value ? '#0066cc' : '#ddd',
+                                        borderRadius: '6px',
+                                        backgroundColor: value === opt.value ? '#e8f0fe' : '#fff',
+                                        color: value === opt.value ? '#0066cc' : '#333',
+                                        fontSize: '14px',
+                                        cursor: 'pointer',
+                                        fontWeight: value === opt.value ? '600' : 'normal',
+                                    }}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <select
+                            value={value ?? ''}
+                            onChange={(e) => handleChange(key, e.target.value)}
+                            style={{
+                                padding: '10px',
+                                border: '1px solid #ddd',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                backgroundColor: '#fff',
+                            }}
+                        >
+                            {options.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                    )}
+                </div>
+            );
+        }
+
+        return null;
+    };
+
+    const renderOutput = (out: Output, index: number) => {
+        if (out.type === 'shape') {
+            return (
+                <div key={index} style={{ width: '100%', height: '400px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ddd' }}>
+                    <Lambda360Shape
+                        shape={out.shape}
+                        backgroundColor="#f5f5f5"
+                        edgeColor="#333333"
+                        showEdges={true}
+                        showViewMenu={true}
+                        orthographic={true}
+                        preserveCamera={true}
+                        origin_url={origin_url}
+                        upAxis="Z"
+                        style={{ width: '100%', height: '100%' }}
+                    />
+                </div>
+            );
+        }
+
+        if (out.type === 'border') {
+            return <hr key={index} style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: '8px 0' }} />;
+        }
+
+        if (out.type === 'message') {
+            const styles: Record<string, { bg: string; border: string; color: string; icon: string }> = {
+                error:   { bg: '#fff0f0', border: '#ffcccc', color: '#cc0000', icon: '✕' },
+                warning: { bg: '#fffbea', border: '#ffe58f', color: '#ad6800', icon: '⚠' },
+                info:    { bg: '#e8f4fd', border: '#b8daff', color: '#0c5460', icon: 'ℹ' },
+                text:    { bg: '#f8f8f8', border: '#e0e0e0', color: '#333333', icon: '' },
+            };
+            const s = styles[out.messageType] ?? styles.text;
+            return (
+                <div key={index} style={{
+                    padding: '12px 16px',
+                    backgroundColor: s.bg,
+                    border: `1px solid ${s.border}`,
+                    borderRadius: '6px',
+                    color: s.color,
+                    fontSize: '14px',
+                    display: 'flex',
+                    gap: '8px',
+                    alignItems: 'flex-start',
+                }}>
+                    {s.icon && <span style={{ flexShrink: 0 }}>{s.icon}</span>}
+                    <span>{out.label}</span>
+                </div>
+            );
+        }
+
+        if (out.type === 'button') {
+            const icon = out.action === 'email' ? '✉' : '💬';
+            return (
+                <button
+                    key={index}
+                    onClick={() => alert(`${out.label} (action: ${out.action})`)}
+                    style={{
                         width: '100%',
                         backgroundColor: '#0066cc',
                         color: 'white',
@@ -177,11 +280,42 @@ export default function Lambda360Form({ params: schemaParams, lambda, origin_url
                         fontWeight: 'bold',
                         fontSize: '16px',
                         cursor: 'pointer',
-                    }}>
-                        発注へ進む
-                    </button>
-                </div>
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                    }}
+                >
+                    <span>{icon}</span>
+                    <span>{out.label}</span>
+                </button>
+            );
+        }
+
+        return null;
+    };
+
+    return (
+        <div style={{
+            width: '100%',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            padding: '24px',
+            boxSizing: 'border-box',
+        }}>
+            {/* Input section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {Object.entries(inputSchema || {}).map(([key, def]) => renderInput(key, def))}
             </div>
+
+            {/* Output section */}
+            {outputs.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {outputs.map((out, i) => renderOutput(out, i))}
+                </div>
+            )}
         </div>
     );
 }

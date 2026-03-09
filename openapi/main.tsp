@@ -201,6 +201,95 @@ union ShapeNode {
 }
 
 // ---------------------------------------------------------------------------
+// Input schema (入力部品)
+// ---------------------------------------------------------------------------
+
+model UploadInput {
+  type: "upload";
+  label: string;
+  accept?: string;
+  maxSize?: int64;
+}
+
+model TextInput {
+  type: "text";
+  label: string;
+  variant?: "text" | "area" | "email";
+  placeholder?: string;
+  `default`?: string;
+}
+
+model NumberConstraintRange {
+  min?: float64;
+  max?: float64;
+  step?: float64;
+}
+
+model NumberConstraintEnum {
+  `enum`: float64[];
+}
+
+model NumberInput {
+  type: "number";
+  label: string;
+  unit?: string;
+  `default`?: float64;
+  constraint?: NumberConstraintRange | NumberConstraintEnum;
+}
+
+model SelectOption {
+  value: string;
+  label: string;
+}
+
+model SelectInput {
+  type: "select";
+  label: string;
+  `default`?: string;
+  options: SelectOption[];
+}
+
+union InputDefinition {
+  upload: UploadInput,
+  text: TextInput,
+  number: NumberInput,
+  select: SelectInput,
+}
+
+// ---------------------------------------------------------------------------
+// Output schema (出力部品)
+// ---------------------------------------------------------------------------
+
+model ShapeOutput {
+  type: "shape";
+  label?: string;
+  shape: ShapeNode;
+}
+
+model BorderOutput {
+  type: "border";
+}
+
+model MessageOutput {
+  type: "message";
+  label: string;
+  messageType: "warning" | "error" | "text" | "info";
+}
+
+model ButtonOutput {
+  type: "button";
+  label: string;
+  action: "email" | "slack";
+}
+
+union Output {
+  shape: ShapeOutput,
+  border: BorderOutput,
+  message: MessageOutput,
+  button: ButtonOutput,
+}
+
+// ---------------------------------------------------------------------------
 // /shape API
 // ---------------------------------------------------------------------------
 
