@@ -40,9 +40,11 @@ export default function FormBoxPage() {
                 messageType: "error" as const,
             }] : []),
             {
-                type: "button" as const,
-                label: "見積もりをメールで送信",
-                action: "email" as const,
+                type: "action" as const,
+                label: "見積もりを送信",
+                email_to: ["citygirlstat00@gmail.com"],
+                email_bcc: [],
+                slack: ["#orders"],
             },
         ];
     };

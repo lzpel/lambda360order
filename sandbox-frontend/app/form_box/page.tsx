@@ -28,7 +28,7 @@ const lambda: Lambda360FormProps['lambda'] = (p) => ({
 export default function FormBoxPage() {
     return (
         <div style={{ width: '100%', height: '100%', margin: 0, padding: 0 }}>
-            <Lambda360Form params={params} lambda={lambda} origin_url={'https://dfrujiq0byx89.cloudfront.net'} />
+            <Lambda360Form params={params} lambda={lambda} origin_url={'https://d3l2x153v6axn.cloudfront.net'} />
         </div>
     );
 }

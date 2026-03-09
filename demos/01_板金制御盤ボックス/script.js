@@ -12,7 +12,7 @@ const lambda = (params) => {
 	return {
 		shape: {
 			op: "stretch",
-			shape: { op: "step", content_hash: "c648cc3352136f4db46d0cbe133b6cf5bf9d208889186d0138ad9d671da72484" },
+			shape: { op: "step", content_hash: "1d59e51c7332088255c16392bcbac052cbd2856956b8be60a9f8feb89abd8547" },
 			cut: [100, 100, 75],
 			delta: [params.width - 200, params.depth - 200, params.height - 150]
 		},

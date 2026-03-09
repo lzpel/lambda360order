@@ -13,12 +13,12 @@ impl Server {
 		Ok(Self {
 			bucket_temp: ngoni::s3::S3Storage::new(
 				&std::env::var("BUCKET_TEMP")
-					.unwrap_or("lambda360order-temp3a4f7567-izxs72uj1dce".to_string()),
+					.unwrap_or("lambda360form-temp3a4f7567-8r5qy5tygu2i".to_string()),
 			)
 			.await,
 			bucket_main: ngoni::s3::S3Storage::new(
 				&std::env::var("BUCKET_MAIN")
-					.unwrap_or("lambda360order-main7ad10839-jsmrkv5hcdcu".to_string()),
+					.unwrap_or("lambda360form-main7ad10839-84xkdgyv7kph".to_string()),
 			)
 			.await,
 		})
@@ -26,6 +26,33 @@ impl Server {
 }
 
 impl ApiInterface for Server {
+	async fn action_action(&self, req: ActionActionRequest) -> ActionActionResponse {
+		let body = &req.body;
+		let pretty = serde_json::to_string_pretty(body).unwrap_or_else(|e| e.to_string());
+		println!("=== /action ===\n{}", pretty);
+
+		let from = std::env::var("MAIL_FROM").unwrap_or("form@surfic.com".to_string());
+		let subject = &body.action.label;
+		let mut errors: Vec<String> = vec![];
+
+		for to in &body.action.email_to {
+			if let Err(e) = ngoni::ses::send_email(&from, to, subject, &pretty).await {
+				errors.push(format!("email_to {to}: {e}"));
+			}
+		}
+		for to in &body.action.email_bcc {
+			if let Err(e) = ngoni::ses::send_email(&from, to, subject, &pretty).await {
+				errors.push(format!("email_bcc {to}: {e}"));
+			}
+		}
+
+		if errors.is_empty() {
+			ActionActionResponse::Status204
+		} else {
+			ActionActionResponse::Status500(errors.join("\n"))
+		}
+	}
+
 	async fn version(&self, _req: VersionRequest) -> VersionResponse {
 		VersionResponse::Status200(format!(
 			"version: {}\nbucket_main: {}\nbucket_temp: {}\n",
@@ -162,7 +189,7 @@ impl ApiInterface for Server {
 mod tests {
 
 	fn online_url() -> String {
-		std::env::var("ONLINE_URL").unwrap_or("https://dfrujiq0byx89.cloudfront.net".to_string())
+		std::env::var("ONLINE_URL").unwrap_or("https://d3l2x153v6axn.cloudfront.net".to_string())
 	}
 
 	/// make test-online で実行: cargo test -p api -- test_online_step_pipeline --include-ignored

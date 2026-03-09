@@ -1,10 +1,12 @@
 "use client";
 import { useState, useMemo, useRef } from 'react';
 import Lambda360Shape from './Lambda360Shape';
-import type { InputDefinition, Output } from '@/out/client';
+import { createClient, createConfig } from '@/out/client/client';
+import { actionAction } from '@/out/client';
+import type { Input, Output } from '@/out/client';
 
 export interface Lambda360FormProps {
-    input: Record<string, InputDefinition>;
+    input: Record<string, Input>;
     lambda: (input: Record<string, any>) => Output[];
     origin_url?: string;
 }
@@ -37,7 +39,7 @@ export default function Lambda360Form({ input: inputSchema, lambda, origin_url }
         setValues(prev => ({ ...prev, [key]: value }));
     };
 
-    const renderInput = (key: string, def: InputDefinition) => {
+    const renderInput = (key: string, def: Input) => {
         const value = values[key];
 
         if (def.type === 'upload') {
@@ -264,31 +266,42 @@ export default function Lambda360Form({ input: inputSchema, lambda, origin_url }
             );
         }
 
-        if (out.type === 'button') {
-            const icon = out.action === 'email' ? '✉' : '💬';
+        if (out.type === 'action') {
+            const disabled = !!out.disable;
+            const disableReason = typeof out.disable === 'string' ? out.disable : undefined;
             return (
-                <button
-                    key={index}
-                    onClick={() => alert(`${out.label} (action: ${out.action})`)}
-                    style={{
-                        width: '100%',
-                        backgroundColor: '#0066cc',
-                        color: 'white',
-                        padding: '14px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        fontWeight: 'bold',
-                        fontSize: '16px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                    }}
-                >
-                    <span>{icon}</span>
-                    <span>{out.label}</span>
-                </button>
+                <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <button
+                        disabled={disabled}
+                        onClick={() => {
+                            const baseUrl = origin_url ? `${origin_url}/api` : '/api';
+                            const customClient = createClient(createConfig({ baseUrl }));
+                            const inputWithValues = Object.fromEntries(
+                                Object.entries(inputSchema).map(([key, def]) => [key, { ...def, value: values[key] }])
+                            );
+                            actionAction({
+                                body: { input: inputWithValues, output: outputs, action: out },
+                                client: customClient,
+                            });
+                        }}
+                        style={{
+                            width: '100%',
+                            backgroundColor: disabled ? '#aaa' : '#0066cc',
+                            color: 'white',
+                            padding: '14px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            fontWeight: 'bold',
+                            fontSize: '16px',
+                            cursor: disabled ? 'not-allowed' : 'pointer',
+                        }}
+                    >
+                        {out.label}
+                    </button>
+                    {disableReason && (
+                        <span style={{ fontSize: '13px', color: '#cc0000' }}>{disableReason}</span>
+                    )}
+                </div>
             );
         }
 

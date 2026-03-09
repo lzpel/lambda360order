@@ -1,11 +1,12 @@
 export MSYS_NO_PATHCONV := 1
 MAKE_RECURSIVE_DIRS := openapi widget frontend api # aws
 PATH_OUT_FRONTEND := api/out
-URL_ORIGIN := https://dfrujiq0byx89.cloudfront.net
 define MAKE_RECURSIVE
 	time printf '%s\n' $(MAKE_RECURSIVE_DIRS) | xargs -IX sh -c '$(MAKE) -C X $@ || exit 255'
 endef
 export
+# TODO: AWS SES本番環境の承認はap-northeast-1でしかとってない
+export AWS_REGION := ap-northeast-1
 generate: # 前処理を行います。開発・本番問わず実行前に叩いてください
 	bash -c "$${MAKE_RECURSIVE}"
 run: # 開発用のサーバー起動コマンド フォアグラウンド実行されます Ctrl+Cで止まります

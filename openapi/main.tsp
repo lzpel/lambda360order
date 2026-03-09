@@ -209,6 +209,8 @@ model UploadInput {
   label: string;
   accept?: string;
   maxSize?: int64;
+  /** アップロード済みファイルのURL */
+  value?: string;
 }
 
 model TextInput {
@@ -217,6 +219,7 @@ model TextInput {
   variant?: "text" | "area" | "email";
   placeholder?: string;
   `default`?: string;
+  value?: string;
 }
 
 model NumberConstraintRange {
@@ -235,6 +238,7 @@ model NumberInput {
   unit?: string;
   `default`?: float64;
   constraint?: NumberConstraintRange | NumberConstraintEnum;
+  value?: float64;
 }
 
 model SelectOption {
@@ -247,9 +251,10 @@ model SelectInput {
   label: string;
   `default`?: string;
   options: SelectOption[];
+  value?: string;
 }
 
-union InputDefinition {
+union Input {
   upload: UploadInput,
   text: TextInput,
   number: NumberInput,
@@ -276,17 +281,21 @@ model MessageOutput {
   messageType: "warning" | "error" | "text" | "info";
 }
 
-model ButtonOutput {
-  type: "button";
+model ActionOutput {
+  type: "action";
   label: string;
-  action: "email" | "slack";
+  /** false=有効, true=無効, 文字列=無効理由 (例: "幅が大きすぎます") */
+  disable?: boolean | string;
+  email_to: string[];
+  email_bcc: string[];
+  slack: string[];
 }
 
 union Output {
   shape: ShapeOutput,
   border: BorderOutput,
   message: MessageOutput,
-  button: ButtonOutput,
+  button: ActionOutput,
 }
 
 // ---------------------------------------------------------------------------
@@ -301,4 +310,23 @@ namespace Shape {
     @header contentType: "model/gltf-binary";
     @body body: bytes;
   };
+}
+
+// ---------------------------------------------------------------------------
+// /action API
+// ---------------------------------------------------------------------------
+
+model ActionRequest {
+  /** value フィールドが埋まった Input の辞書（キーはフォームのフィールド名） */
+  input: Record<Input>;
+  /** ボタン押下時点で lambda が返した出力（メール本文の生成に使う） */
+  output: Output[];
+  action: ActionOutput;
+}
+
+@route("/action")
+namespace Action {
+  /** inputの値とbuttonの宛先を受け取ってメール・Slack送信を行う */
+  @post
+  op action(@body body: ActionRequest): NoContentResponse | BadRequestResponse | ErrorResponse;
 }

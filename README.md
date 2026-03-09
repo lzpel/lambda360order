@@ -57,7 +57,7 @@ make run
 ### デプロイ
 
 CDN https://unpkg.com/lambda360form@latest/dist/lambda360form.js
-AWS https://dfrujiq0byx89.cloudfront.net
+AWS https://d3l2x153v6axn.cloudfront.net
 
 ```sh
 make deploy-aws   # generate + deploy + AWS CDK deploy
