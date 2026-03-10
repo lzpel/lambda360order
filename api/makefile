@@ -1,4 +1,5 @@
 
+ifeq ($(NEXT_PUBLIC_REPO),)
 generate:
 	cargo run --example generate
 	cargo fmt
@@ -42,6 +43,6 @@ test-stretch-minimal:
 	cargo test heap_corruption_early_drop -- --ignored --nocapture
 	cargo test heap_corruption_l_shape -- --nocapture
 	cargo test heap_corruption_cylinder_hole -- --nocapture
-
+endif
 %:
 	echo "No rule to make target '$@'"
