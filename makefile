@@ -1,5 +1,5 @@
 export MSYS_NO_PATHCONV := 1
-MAKE_RECURSIVE_DIRS := openapi widget frontend api # aws
+MAKE_RECURSIVE_DIRS := openapi widget api frontend # aws
 PATH_OUT_FRONTEND := api/out
 define MAKE_RECURSIVE
 	time printf '%s\n' $(MAKE_RECURSIVE_DIRS) | xargs -IX sh -c '$(MAKE) -C X $@ || exit 255'

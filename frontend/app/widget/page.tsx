@@ -9,7 +9,7 @@ export default function WidgetDemoPage() {
 
             <div id="custom-box" style={{ width: '100%', height: '600px', border: '1px solid #ccc' }}></div>
 
-            <Script src="/widget.js" />
+            <Script src="https://unpkg.com/lambda360form@0.1.5/dist/lambda360form.js" />
 
             <Script id="lambda360-init">
                 {`
