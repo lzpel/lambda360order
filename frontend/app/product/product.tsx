@@ -1,21 +1,62 @@
 'use client';
-import Script from 'next/script';
+import Lambda360Form from '@widget/Lambda360Form';
+import type { ShapeNode } from '@/out/client';
+
+const demoInput = {
+  width:  { type: "number" as const, label: "幅",    unit: "mm", default: 300, constraint: { min: 200, max: 600, step: 10 } },
+  depth:  { type: "number" as const, label: "奥行き", unit: "mm", default: 400, constraint: { min: 200, max: 800, step: 10 } },
+  height: { type: "number" as const, label: "高さ",  unit: "mm", default: 150, constraint: { enum: [100, 150, 200] } },
+  color:  { type: "select" as const, label: "色",    default: "#cccccc", options: [
+    { value: "#cccccc", label: "シルバー" },
+    { value: "#336699", label: "ネイビー" },
+    { value: "#993333", label: "ワイン" },
+  ]},
+};
+
+const demoLambda = (input: Record<string, any>) => {
+  const price = 1500 + (input.width * input.depth * 0.001);
+  return [
+    {
+      type: "shape" as const,
+      label: "プレビュー",
+      shape: {
+        op: "stretch",
+        shape: { op: "step", content_hash: "d6cb2eb2d6e0d802095ea1eda691cf9a3e9bf3394301a0d148f53e55f0f97951" },
+        cut: [1, 0, 10],
+        delta: [input.width - 200, input.depth - 200, input.height - 150],
+      } as ShapeNode,
+    },
+    { type: "border" as const },
+    {
+      type: "message" as const,
+      label: `参考価格: ¥${price.toLocaleString()}`,
+      messageType: "info" as const,
+    },
+    {
+      type: "action" as const,
+      label: "見積もりを送信",
+      email_to: ["citygirlstat00@gmail.com"],
+      email_bcc: [],
+      slack: ["#orders"],
+    },
+  ];
+};
 
 const features = [
   {
-    icon: '⚙️',
-    title: 'パラメトリック 3D プレビュー',
-    desc: 'サイズや色をリアルタイムに変更しながら3Dモデルをその場で確認。注文前に仕上がりを完全にイメージできます。',
+    icon: '📋',
+    title: 'フォームを作る感覚で導入',
+    desc: '項目を定義するだけで 3D つきの見積もりフォームが完成。CAD の知識は不要です。',
   },
   {
     icon: '📐',
-    title: '豊富なカスタマイズ',
-    desc: '幅・奥行き・高さ・素材・カラーを自由に指定。製造制約チェックも自動で行われ、製造不可の注文を未然に防ぎます。',
+    title: '入力するたびに形が変わる',
+    desc: '幅・奥行き・高さを入力すると 3D モデルがリアルタイムで更新。製造不可の組み合わせも自動チェックします。',
   },
   {
     icon: '✉️',
-    title: 'ワンクリック見積もり',
-    desc: 'フォーム送信だけでメール・Slackへ自動通知。担当者への転送も含めて完全自動化されています。',
+    title: 'そのまま見積もりを送信',
+    desc: '送信ボタン一つで担当者にメール・Slack 通知。受注から社内共有まで自動化されます。',
   },
 ];
 
@@ -72,7 +113,7 @@ export default function Product() {
               marginBottom: '1.75rem',
             }}
           >
-            パラメトリック 3D オーダーシステム
+            製造業向け 3D 見積もりフォーム
           </span>
           <h1
             style={{
@@ -83,9 +124,7 @@ export default function Product() {
               lineHeight: 1.15,
             }}
           >
-            Lambda<span style={{ color: '#60a5fa' }}>360</span>
-            <br />
-            Order System
+            形<span style={{ color: '#60a5fa' }}>/</span>Katachi<span style={{ color: '#60a5fa' }}>360</span>
           </h1>
           <p
             style={{
@@ -95,8 +134,8 @@ export default function Product() {
               maxWidth: '520px',
             }}
           >
-            3D プレビューでリアルタイムにカスタマイズ。
-            見積もりをワンクリックで送信できる次世代の受注システムです。
+            Google フォームの感覚で使える、3D つき見積もりフォーム。
+            サイズを入力すると形が見え、そのまま発注できます。
           </p>
           <div
             style={{
@@ -339,11 +378,10 @@ export default function Product() {
                   fontFamily: 'monospace',
                 }}
               >
-                lambda360-order-demo
+                katachi360-demo
               </span>
             </div>
-            {/* Widget mount point */}
-            <div id="product-demo-widget" style={{ width: '100%', minHeight: '520px' }} />
+            <Lambda360Form input={demoInput} lambda={demoLambda} />
           </div>
         </div>
       </section>
@@ -444,7 +482,7 @@ export default function Product() {
             今すぐ導入しませんか？
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.75)', marginBottom: '2.5rem', fontSize: '15px' }}>
-            Lambda360 Order System は御社のサイトにワンラインで埋め込み可能です。
+            Katachi360 は御社のサイトにワンラインで埋め込み可能です。
             お気軽にお問い合わせください。
           </p>
           <a
@@ -466,39 +504,6 @@ export default function Product() {
         </div>
       </section>
 
-      {/* ── IIFE Widget ──────────────────────────────────── */}
-      <Script src="https://unpkg.com/lambda360form@0.1.5/dist/lambda360form.js" />
-      <Script id="product-demo-init">
-        {`
-          const setupProductDemo = () => {
-            if (!window.Lambda360) { setTimeout(setupProductDemo, 50); return; }
-            const { initLambda360 } = window.Lambda360;
-            const container = document.getElementById('product-demo-widget');
-            if (container && container.innerHTML === '' && initLambda360) {
-              initLambda360('#product-demo-widget', {
-                params: {
-                  width:  { type: "number", label: "幅",    unit: "mm", default: 300, constraint: { min: 200, max: 600, step: 10 } },
-                  depth:  { type: "number", label: "奥行き", unit: "mm", default: 400, constraint: { min: 200, max: 800, step: 10 } },
-                  height: { type: "number", label: "高さ",  unit: "mm", default: 150, constraint: { enum: [100, 150, 200] } },
-                  color:  { type: "color",  label: "色",    default: "#cccccc", constraint: { enum: ["#cccccc", "#336699", "#993333"] } },
-                },
-                lambda: (params) => ({
-                  shape: {
-                    op: "stretch",
-                    shape: { op: "step", content_hash: "d6cb2eb2d6e0d802095ea1eda691cf9a3e9bf3394301a0d148f53e55f0f97951" },
-                    cut: [1, 0, 10],
-                    delta: [params.width - 200, params.depth - 200, params.height - 150],
-                  },
-                  color: params.color,
-                  price: 1500 + (params.width * params.depth * 0.001),
-                }),
-              });
-            }
-          };
-          window.addEventListener('load', setupProductDemo);
-          if (document.readyState === 'complete') setupProductDemo();
-        `}
-      </Script>
     </div>
   );
 }
