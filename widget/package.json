@@ -9,7 +9,7 @@
     "build": "vite build && vite build --mode lib && npx tsx src/generateDemos.ts"
   },
   "dependencies": {
-    "lambda360view": "^0.1.13"
+    "lambda360view": "^0.1.14"
   },
   "peerDependencies": {
     "react": "^19",
