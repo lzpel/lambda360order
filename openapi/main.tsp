@@ -265,10 +265,18 @@ union Input {
 // Output schema (出力部品)
 // ---------------------------------------------------------------------------
 
+union Axis { X: "X", Y: "Y", Z: "Z" }
+
 model ShapeOutput {
   type: "shape";
   label?: string;
   shape: ShapeNode;
+  /** モデル座標系の上方向軸 */
+  axisUp?: Axis;
+  /** バウンディングボックスの最小値をゼロに揃える軸 */
+  axisGround?: Axis;
+  /** 中心揃えする軸の一覧 */
+  axisCenter?: Axis[];
 }
 
 model BorderOutput {

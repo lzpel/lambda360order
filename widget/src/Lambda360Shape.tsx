@@ -96,7 +96,7 @@ export default function Lambda360Shape({ shape, origin_url = '', ...props }: Lam
   return (
     <Lambda360View
       model={model}
-      centerNode={centerNode}
+      nodeCenter={centerNode}
       {...props}
     />
   );

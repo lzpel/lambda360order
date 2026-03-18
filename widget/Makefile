@@ -2,6 +2,7 @@
 generate:
 	X=out/client && rm -rf $$X && mkdir -p $$X && cp -rf ../$$X/. $$X # out/clientを丸ごとコピー
 	npm install
+	npm run generate # デモを作成する
 
 run:
 	npm run dev

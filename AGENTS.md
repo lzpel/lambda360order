@@ -1,0 +1,2 @@
+- コードを修正した場合は、make generateを実行して、exit 0になる=型チェックOKか確認して。
+- 常にtab indentを用いて。既存コードにスペース indentが混在している場合は、tab indentに統一して。

@@ -5,11 +5,12 @@
   "module": "dist/esm/index.js",
   "types": "dist/esm/src/Lambda360Form.d.ts",
   "scripts": {
+    "generate": "npx tsx src/generateDemos.ts",
     "dev": "vite build --watch",
-    "build": "vite build && vite build --mode lib && npx tsx src/generateDemos.ts"
+    "build": "vite build && vite build --mode lib"
   },
   "dependencies": {
-    "lambda360view": "^0.1.14"
+    "lambda360view": "^0.1.15"
   },
   "peerDependencies": {
     "react": "^19",

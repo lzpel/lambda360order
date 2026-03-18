@@ -66,7 +66,7 @@ export default function ColorStretchPage() {
     <div style={{ display: 'flex', width: '100%', height: '100%', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       {/* 左: 3Dビュー */}
       <div style={{ flex: 1, position: 'relative', minWidth: 0, minHeight: 0 }}>
-        <Lambda360Shape shape={shape} upAxis="Z" />
+        <Lambda360Shape shape={shape} axisUp="Z" />
       </div>
 
       {/* 右: フォーム */}
