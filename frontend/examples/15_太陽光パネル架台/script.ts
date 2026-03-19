@@ -4,8 +4,8 @@ export const params: Record<string, Input> = {
     tilt:  { type: "number", label: "傾斜角", unit: "°",  default: 15,   constraint: { enum: [10, 15, 20, 25, 30] } },
     width: { type: "number", label: "幅",      unit: "mm", default: 1000, constraint: { min: 800, max: 2000, step: 100 } },
     color: { type: "select", label: "色", default: "#aaaaaa", options: [
-        { value: "#aaaaaa", label: "#aaaaaa" },
-        { value: "#888888", label: "#888888" },
+        { value: "#aaaaaa", label: "ライトグレー" },
+        { value: "#888888", label: "グレー" },
     ] },
 };
 

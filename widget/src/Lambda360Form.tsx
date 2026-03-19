@@ -56,7 +56,12 @@ export default function Lambda360Form({ input: inputSchema, lambda, serverUrl }:
 			{outputs.length > 0 && (
 				<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 					{outputs.map((out, i) =>
-						<OutputItem key={i} out={out} serverUrl={serverUrl} inputSchema={inputSchema} values={values} outputs={outputs} />
+						<OutputItem
+							key={i}
+							out={out}
+							serverUrl={serverUrl}
+							action={out.type === 'action' ? { input: inputSchema, value: values, output: outputs, action: out } : undefined}
+						/>
 					)}
 				</div>
 			)}

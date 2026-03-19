@@ -4,8 +4,8 @@ export const params: Record<string, Input> = {
     diameter:       { type: "number", label: "呼び径",   unit: "A",   default: 50,  constraint: { enum: [15, 20, 25, 32, 40, 50, 65, 80, 100] } },
     pressure_class: { type: "number", label: "圧力クラス", unit: "MPa", default: 1.0, constraint: { enum: [1.0, 2.0, 5.0, 10.0] } },
     color:          { type: "select", label: "色", default: "#aaaaaa", options: [
-        { value: "#aaaaaa", label: "#aaaaaa" },
-        { value: "#888888", label: "#888888" },
+        { value: "#aaaaaa", label: "ライトグレー" },
+        { value: "#888888", label: "グレー" },
     ] },
 };
 

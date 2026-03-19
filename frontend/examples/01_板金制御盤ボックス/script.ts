@@ -6,9 +6,9 @@ export const params: Record<string, Input> = {
 	height: { type: "number", label: "高さ", unit: "mm", default: 150, constraint: { enum: [100, 150, 200, 2000] } },
 	color: {
 		type: "select", label: "色", default: "#cccccc", options: [
-			{ value: "#cccccc", label: "#cccccc" },
-			{ value: "#336699", label: "#336699" },
-			{ value: "#993333", label: "#993333" },
+			{ value: "#cccccc", label: "シルバー" },
+			{ value: "#336699", label: "ネイビー" },
+			{ value: "#993333", label: "ワインレッド" },
 		]
 	},
 	email: { type: "text", label: "メールアドレス", variant: "email", placeholder: "example@example.com" },

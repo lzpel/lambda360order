@@ -209,8 +209,6 @@ model UploadInput {
 	label: string;
 	accept?: string;
 	maxSize?: int64;
-	/** アップロード済みファイルのURL */
-	value?: string;
 }
 
 model TextInput {
@@ -219,7 +217,6 @@ model TextInput {
 	variant?: "text" | "area" | "email";
 	placeholder?: string;
 	`default`?: string;
-	value?: string;
 }
 
 model NumberConstraintRange {
@@ -238,7 +235,6 @@ model NumberInput {
 	unit?: string;
 	`default`?: float64;
 	constraint?: NumberConstraintRange | NumberConstraintEnum;
-	value?: float64;
 }
 
 model SelectOption {
@@ -251,7 +247,8 @@ model SelectInput {
 	label: string;
 	`default`?: string;
 	options: SelectOption[];
-	value?: string;
+	/** trueにすると選択肢を横並びにする（デフォルト: 縦並び） */
+	horizontal?: boolean;
 }
 
 union Input {
@@ -325,8 +322,10 @@ namespace Shape {
 // ---------------------------------------------------------------------------
 
 model ActionRequest {
-	/** value フィールドが埋まった Input の辞書（キーはフォームのフィールド名） */
+	/** Input の定義辞書（キーはフォームのフィールド名） */
 	input: Record<Input>;
+	/** フィールド名 → 入力値（文字列または数値）の辞書 */
+	value: Record<string | float64>;
 	/** ボタン押下時点で lambda が返した出力（メール本文の生成に使う） */
 	output: Output[];
 	action: ActionOutput;

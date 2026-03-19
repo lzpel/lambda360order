@@ -4,8 +4,8 @@ export const params: Record<string, Input> = {
     units: { type: "number", label: "ユニット数(U)", unit: "U",  default: 12,  constraint: { enum: [6, 9, 12, 18, 24, 42] } },
     depth: { type: "number", label: "奥行き",         unit: "mm", default: 600, constraint: { min: 450, max: 1000, step: 50 } },
     color: { type: "select", label: "色", default: "#222222", options: [
-        { value: "#222222", label: "#222222" },
-        { value: "#eeeeee", label: "#eeeeee" },
+        { value: "#222222", label: "ブラック" },
+        { value: "#eeeeee", label: "ホワイト" },
     ] },
 };
 

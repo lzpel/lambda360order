@@ -4,8 +4,8 @@ export const params: Record<string, Input> = {
     pipe_diameter: { type: "number", label: "管外径", unit: "mm", default: 60.5, constraint: { enum: [27.2, 34.0, 42.7, 48.6, 60.5, 76.3, 101.6] } },
     width:         { type: "number", label: "幅",     unit: "mm", default: 80, constraint: { min: 40, max: 200, step: 20 } },
     color:         { type: "select", label: "色", default: "#888888", options: [
-        { value: "#888888", label: "#888888" },
-        { value: "#cc4400", label: "#cc4400" },
+        { value: "#888888", label: "グレー" },
+        { value: "#cc4400", label: "オレンジ" },
     ] },
 };
 

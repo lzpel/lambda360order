@@ -57,7 +57,9 @@ make run
 ### デプロイ
 
 CDN https://unpkg.com/lambda360form@latest/dist/lambda360form.js
-AWS https://d3l2x153v6axn.cloudfront.net
+
+AWS https://katachiform.com/ = https://d3l2x153v6axn.cloudfront.net
+
 DEMO https://unpkg.com/lambda360form@latest/dist/examples/index.html
 
 ```sh

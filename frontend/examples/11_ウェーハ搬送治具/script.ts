@@ -4,8 +4,8 @@ export const params: Record<string, Input> = {
     wafer_size: { type: "number", label: "ウェーハ径", unit: "inch", default: 8,  constraint: { enum: [6, 8, 12] } },
     slots:      { type: "number", label: "スロット数",  unit: "枚",   default: 25, constraint: { enum: [13, 25] } },
     color:      { type: "select", label: "色", default: "#e0e8f0", options: [
-        { value: "#e0e8f0", label: "#e0e8f0" },
-        { value: "#f0f0f0", label: "#f0f0f0" },
+        { value: "#e0e8f0", label: "アイスブルー" },
+        { value: "#f0f0f0", label: "ホワイト" },
     ] },
 };
 

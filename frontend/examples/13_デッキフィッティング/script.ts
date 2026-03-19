@@ -4,9 +4,9 @@ export const params: Record<string, Input> = {
     angle:     { type: "number", label: "角度", unit: "°",  default: 90, constraint: { enum: [45, 60, 90, 135] } },
     thickness: { type: "number", label: "板厚", unit: "mm", default: 5,  constraint: { enum: [3, 4, 5, 6, 8] } },
     color:     { type: "select", label: "色", default: "#888888", options: [
-        { value: "#888888", label: "#888888" },
-        { value: "#c0c0c0", label: "#c0c0c0" },
-        { value: "#4a4a4a", label: "#4a4a4a" },
+        { value: "#888888", label: "グレー" },
+        { value: "#c0c0c0", label: "シルバー" },
+        { value: "#4a4a4a", label: "ダークグレー" },
     ] },
 };
 

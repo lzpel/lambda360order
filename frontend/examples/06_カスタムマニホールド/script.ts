@@ -4,8 +4,8 @@ export const params: Record<string, Input> = {
     ports:  { type: "number", label: "ポート数", unit: "個", default: 4,   constraint: { enum: [2, 4, 6, 8] } },
     length: { type: "number", label: "全長",      unit: "mm", default: 160, constraint: { min: 80, max: 400, step: 40 } },
     color:  { type: "select", label: "色", default: "#b0b0b0", options: [
-        { value: "#b0b0b0", label: "#b0b0b0" },
-        { value: "#888888", label: "#888888" },
+        { value: "#b0b0b0", label: "ライトグレー" },
+        { value: "#888888", label: "グレー" },
     ] },
 };
 

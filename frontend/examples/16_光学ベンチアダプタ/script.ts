@@ -4,8 +4,8 @@ export const params: Record<string, Input> = {
     hole_spacing: { type: "number", label: "穴ピッチ", unit: "mm", default: 25, constraint: { enum: [25, 50] } },
     thickness:    { type: "number", label: "厚さ",     unit: "mm", default: 10, constraint: { enum: [5, 10, 15, 20] } },
     color:        { type: "select", label: "色", default: "#d4d4d4", options: [
-        { value: "#d4d4d4", label: "#d4d4d4" },
-        { value: "#222222", label: "#222222" },
+        { value: "#d4d4d4", label: "シルバー" },
+        { value: "#222222", label: "ブラック" },
     ] },
 };
 

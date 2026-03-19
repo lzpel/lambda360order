@@ -4,8 +4,8 @@ export const params: Record<string, Input> = {
     width:  { type: "number", label: "幅",  unit: "mm", default: 800, constraint: { min: 400, max: 1600, step: 50 } },
     length: { type: "number", label: "長さ", unit: "mm", default: 600, constraint: { min: 300, max: 1200, step: 50 } },
     color:  { type: "select", label: "色", default: "#333333", options: [
-        { value: "#333333", label: "#333333" },
-        { value: "#888888", label: "#888888" },
+        { value: "#333333", label: "ダークグレー" },
+        { value: "#888888", label: "グレー" },
     ] },
 };
 

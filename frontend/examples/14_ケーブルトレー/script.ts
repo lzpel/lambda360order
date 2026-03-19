@@ -4,9 +4,9 @@ export const params: Record<string, Input> = {
     width:  { type: "number", label: "幅",  unit: "mm", default: 200,  constraint: { enum: [100, 150, 200, 300, 400, 600] } },
     length: { type: "number", label: "長さ", unit: "mm", default: 2000, constraint: { min: 500, max: 3000, step: 500 } },
     color:  { type: "select", label: "色", default: "#bbbbbb", options: [
-        { value: "#bbbbbb", label: "#bbbbbb" },
-        { value: "#888888", label: "#888888" },
-        { value: "#ffcc00", label: "#ffcc00" },
+        { value: "#bbbbbb", label: "ライトグレー" },
+        { value: "#888888", label: "グレー" },
+        { value: "#ffcc00", label: "イエロー" },
     ] },
 };
 

@@ -1,14 +1,13 @@
 import type { Input as InputDef } from '@/out/client';
 
-interface InputProps {
+export default function Input(props: {
 	name: string;
 	def: InputDef;
 	value: any;
 	onChange: (value: any) => void;
 	fileInputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
-}
-
-export default function Input({ name, def, value, onChange, fileInputRefs }: InputProps) {
+}) {
+	const def = props.def;
 	if (def.type === 'upload') {
 		return (
 			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -20,20 +19,20 @@ export default function Input({ name, def, value, onChange, fileInputRefs }: Inp
 						padding: '16px',
 						textAlign: 'center',
 						cursor: 'pointer',
-						backgroundColor: value ? '#f0f8ff' : '#fafafa',
+						backgroundColor: props.value ? '#f0f8ff' : '#fafafa',
 					}}
-					onClick={() => fileInputRefs.current[name]?.click()}
+					onClick={() => props.fileInputRefs.current[props.name]?.click()}
 				>
-					{value ? (
+					{props.value ? (
 						<span style={{ fontSize: '13px', color: '#0066cc' }}>
-							{typeof value === 'string' ? value : (value as File).name}
+							{typeof props.value === 'string' ? props.value : (props.value as File).name}
 						</span>
 					) : (
 						<span style={{ fontSize: '13px', color: '#999' }}>クリックしてファイルを選択</span>
 					)}
 				</div>
 				<input
-					ref={el => { fileInputRefs.current[name] = el; }}
+					ref={el => { props.fileInputRefs.current[props.name] = el; }}
 					type="file"
 					accept={def.accept}
 					style={{ display: 'none' }}
@@ -41,7 +40,7 @@ export default function Input({ name, def, value, onChange, fileInputRefs }: Inp
 						const file = e.target.files?.[0];
 						if (file) {
 							alert(`アップロード機能は未実装です。選択されたファイル: ${file.name}`);
-							onChange(file);
+							props.onChange(file);
 						}
 					}}
 				/>
@@ -56,9 +55,9 @@ export default function Input({ name, def, value, onChange, fileInputRefs }: Inp
 				<label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>
 				{variant === 'area' ? (
 					<textarea
-						value={value ?? ''}
+						value={props.value ?? ''}
 						placeholder={def.placeholder}
-						onChange={(e) => onChange(e.target.value)}
+						onChange={(e) => props.onChange(e.target.value)}
 						rows={4}
 						style={{
 							padding: '10px',
@@ -71,9 +70,9 @@ export default function Input({ name, def, value, onChange, fileInputRefs }: Inp
 				) : (
 					<input
 						type={variant === 'email' ? 'email' : 'text'}
-						value={value ?? ''}
+						value={props.value ?? ''}
 						placeholder={def.placeholder}
-						onChange={(e) => onChange(e.target.value)}
+						onChange={(e) => props.onChange(e.target.value)}
 						style={{
 							padding: '10px',
 							border: '1px solid #ddd',
@@ -95,8 +94,8 @@ export default function Input({ name, def, value, onChange, fileInputRefs }: Inp
 						{def.label}{def.unit && <span style={{ color: '#666', fontWeight: 'normal' }}> ({def.unit})</span>}
 					</label>
 					<select
-						value={value}
-						onChange={(e) => onChange(Number(e.target.value))}
+						value={props.value}
+						onChange={(e) => props.onChange(Number(e.target.value))}
 						style={{
 							padding: '10px',
 							border: '1px solid #ddd',
@@ -116,15 +115,15 @@ export default function Input({ name, def, value, onChange, fileInputRefs }: Inp
 			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 				<label style={{ fontSize: '14px', fontWeight: '600', color: '#333', display: 'flex', justifyContent: 'space-between' }}>
 					<span>{def.label}{def.unit && <span style={{ color: '#666', fontWeight: 'normal' }}> ({def.unit})</span>}</span>
-					<span style={{ color: '#333' }}>{value}{def.unit ? ` ${def.unit}` : ''}</span>
+					<span style={{ color: '#333' }}>{props.value}{def.unit ? ` ${def.unit}` : ''}</span>
 				</label>
 				<input
 					type="range"
 					min={constraint?.min ?? 0}
 					max={constraint?.max ?? 100}
 					step={constraint?.step ?? 1}
-					value={value}
-					onChange={(e) => onChange(Number(e.target.value))}
+					value={props.value}
+					onChange={(e) => props.onChange(Number(e.target.value))}
 					style={{ width: '100%' }}
 				/>
 			</div>
@@ -133,49 +132,23 @@ export default function Input({ name, def, value, onChange, fileInputRefs }: Inp
 
 	if (def.type === 'select') {
 		const options = def.options ?? [];
-		const useButtons = options.length <= 5;
 		return (
 			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 				<label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>
-				{useButtons ? (
-					<div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-						{options.map(opt => (
-							<button
-								key={opt.value}
-								onClick={() => onChange(opt.value)}
-								style={{
-									padding: '8px 16px',
-									border: '1px solid',
-									borderColor: value === opt.value ? '#0066cc' : '#ddd',
-									borderRadius: '6px',
-									backgroundColor: value === opt.value ? '#e8f0fe' : '#fff',
-									color: value === opt.value ? '#0066cc' : '#333',
-									fontSize: '14px',
-									cursor: 'pointer',
-									fontWeight: value === opt.value ? '600' : 'normal',
-								}}
-							>
-								{opt.label}
-							</button>
-						))}
-					</div>
-				) : (
-					<select
-						value={value ?? ''}
-						onChange={(e) => onChange(e.target.value)}
-						style={{
-							padding: '10px',
-							border: '1px solid #ddd',
-							borderRadius: '6px',
-							fontSize: '14px',
-							backgroundColor: '#fff',
-						}}
-					>
-						{options.map(opt => (
-							<option key={opt.value} value={opt.value}>{opt.label}</option>
-						))}
-					</select>
-				)}
+				<div style={{ display: 'flex', flexDirection: def.horizontal ? 'row' : 'column', gap: '8px', flexWrap: 'wrap' }}>
+					{options.map(opt => (
+						<label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px' }}>
+							<input
+								type="radio"
+								name={props.name}
+								value={opt.value}
+								checked={props.value === opt.value}
+								onChange={() => props.onChange(opt.value)}
+							/>
+							{opt.label}
+						</label>
+					))}
+				</div>
 			</div>
 		);
 	}
