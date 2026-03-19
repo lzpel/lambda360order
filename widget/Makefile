@@ -1,6 +1,7 @@
 
 generate:
 	X=out/client && rm -rf $$X && mkdir -p $$X && cp -rf ../$$X/. $$X # out/clientを丸ごとコピー
+	X=dist/examples && rm -rf $$X && mkdir -p $$X && cp -rf ../$$X/. $$X # dist/examplesを丸ごとコピー
 	npm install
 
 run:

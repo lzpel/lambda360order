@@ -18,6 +18,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/nunjucks": "^3",
+    "esbuild": "^0.25",
     "nunjucks": "^3",
     "tsx": "^4",
     "typescript": "^5"

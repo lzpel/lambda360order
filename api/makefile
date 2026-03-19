@@ -1,5 +1,5 @@
 
-ifeq ($(NEXT_PUBLIC_REPO),)
+ifeq ($(REPONAME),)
 generate:
 	cargo run --example generate
 	cargo fmt

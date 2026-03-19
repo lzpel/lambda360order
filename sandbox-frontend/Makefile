@@ -16,4 +16,4 @@ deploy:
 	npm run start
 
 action: generate
-	echo ${NEXT_PUBLIC_REPO}
+	echo ${REPONAME}
