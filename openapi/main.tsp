@@ -8,7 +8,7 @@ using TypeSpec.Http;
 // ---------------------------------------------------------------------------
 
 @service(#{
-  title: "Lambda360 API",
+	title: "Lambda360 API",
 })
 @server("/api", "Main server")
 namespace Lambda360;
@@ -42,14 +42,14 @@ model ErrorResponse is Response<500, string>;
 // ---------------------------------------------------------------------------
 
 model StepStatusBody {
-  timestamp: int64;
-  progress: int32;
-  message: string;
+	timestamp: int64;
+	progress: int32;
+	message: string;
 }
 
 model UploadUrlBody {
-  id: UUID;
-  url: string;
+	id: UUID;
+	url: string;
 }
 
 /**
@@ -64,43 +64,43 @@ op version(): TextResponse;
  */
 @route("/step")
 namespace Step {
-  /**
-   * アップロード用のURLとIDを取得します。
-   * フロントエンドはこのURLに対して実際のファイルをアップロードします。
-   */
-  @route("/upload")
-  @post
-  op upload_url(): Response<200, UploadUrlBody>;
+	/**
+	 * アップロード用のURLとIDを取得します。
+	 * フロントエンドはこのURLに対して実際のファイルをアップロードします。
+	 */
+	@route("/upload")
+	@post
+	op upload_url(): Response<200, UploadUrlBody>;
 
-  /**
-   * ローカルテスト用（--features debug 時のみ有効）：
-   * ファイルを受け取り、upload_url → S3アップロード → execute → status確認 の
-   * 一連のフローを実行してcontent_hashを返します。
-   */
-  @route("/test")
-  @post
-  op test(@body body: bytes): TextResponse | ErrorResponse;
+	/**
+	 * ローカルテスト用（--features debug 時のみ有効）：
+	 * ファイルを受け取り、upload_url → S3アップロード → execute → status確認 の
+	 * 一連のフローを実行してcontent_hashを返します。
+	 */
+	@route("/test")
+	@post
+	op test(@body body: bytes): TextResponse | ErrorResponse;
 
-  /**
-   * 指定した ID のファイルの変換処理（STEP -> BREP）を実行します。
-   * ダウンロード・変換・アップロードがすべて完了したときに 200 を返します。
-   * 失敗した場合は 500 とエラーメッセージを返します。
-   * 進捗は処理中も /step/{id}/status で確認できます。
-   * レスポンスボディは変換後ファイルの content_hash です。
-   */
-  @route("/{id}/execute")
-  @post
-  op execute(@path id: UUID): TextResponse | ErrorResponse;
+	/**
+	 * 指定した ID のファイルの変換処理（STEP -> BREP）を実行します。
+	 * ダウンロード・変換・アップロードがすべて完了したときに 200 を返します。
+	 * 失敗した場合は 500 とエラーメッセージを返します。
+	 * 進捗は処理中も /step/{id}/status で確認できます。
+	 * レスポンスボディは変換後ファイルの content_hash です。
+	 */
+	@route("/{id}/execute")
+	@post
+	op execute(@path id: UUID): TextResponse | ErrorResponse;
 
-  /**
-   * 変換処理の最新進捗を返します。
-   * - progress 100: 正常終了
-   * - progress 101以上: 異常終了
-   * 変換がまだ開始されていない場合は 404 を返します。
-   */
-  @route("/{id}/status")
-  @get
-  op status(@path id: UUID): StepStatusBody | NotFoundResponse;
+	/**
+	 * 変換処理の最新進捗を返します。
+	 * - progress 100: 正常終了
+	 * - progress 101以上: 異常終了
+	 * 変換がまだ開始されていない場合は 404 を返します。
+	 */
+	@route("/{id}/status")
+	@get
+	op status(@path id: UUID): StepStatusBody | NotFoundResponse;
 }
 
 // ---------------------------------------------------------------------------
@@ -109,8 +109,8 @@ namespace Step {
 
 /** 数値定数または $式 (例: 100.0, "$width", "$width * 0.5 + 50") */
 union NumberOrExpr {
-  num: float64,
-  expr: string,
+	num: float64,
+	expr: string,
 }
 
 /**
@@ -118,71 +118,71 @@ union NumberOrExpr {
  * ※これは OpenAPI の oneOf 生成のために必須ではないが、共通項を置きたい場合に便利
  */
 model ShapeNodeBase {
-  `op`: string;
+	`op`: string;
 }
 
 /** STEPファイルの読み込み */
 model StepNode extends ShapeNodeBase {
-  `op`: "step";
-  /** STEPファイルのsha256ハッシュ値 (hex64) */
-  content_hash: string;
-  /** 表示用メモ（GLBキャッシュキーに影響しない） */
-  description?: string;
+	`op`: "step";
+	/** STEPファイルのsha256ハッシュ値 (hex64) */
+	content_hash: string;
+	/** 表示用メモ（GLBキャッシュキーに影響しない） */
+	description?: string;
 }
 
 /** ブーリアン合体 (BRepAlgoAPI_Fuse) */
 model UnionShapeNode extends ShapeNodeBase {
-  `op`: "union";
-  shapes: ShapeNode[];
+	`op`: "union";
+	shapes: ShapeNode[];
 }
 
 /** ブーリアン共通部分 (BRepAlgoAPI_Common) */
 model IntersectNode extends ShapeNodeBase {
-  `op`: "intersect";
-  a: ShapeNode;
-  b: ShapeNode;
+	`op`: "intersect";
+	a: ShapeNode;
+	b: ShapeNode;
 }
 
 /** ブーリアン差演算: a から b をくり抜く (BRepAlgoAPI_Cut) */
 model SubtractNode extends ShapeNodeBase {
-  `op`: "subtract";
-  a: ShapeNode;
-  b: ShapeNode;
+	`op`: "subtract";
+	a: ShapeNode;
+	b: ShapeNode;
 }
 
 /** 一様拡大縮小 */
 model ScaleNode extends ShapeNodeBase {
-  `op`: "scale";
-  shape: ShapeNode;
-  factor: NumberOrExpr;
+	`op`: "scale";
+	shape: ShapeNode;
+	factor: NumberOrExpr;
 }
 
 /** 平行移動 */
 model TranslateNode extends ShapeNodeBase {
-  `op`: "translate";
-  shape: ShapeNode;
-  /** 移動量 [x, y, z] (mm) */
-  xyz: NumberOrExpr[];
+	`op`: "translate";
+	shape: ShapeNode;
+	/** 移動量 [x, y, z] (mm) */
+	xyz: NumberOrExpr[];
 }
 
 /** 回転 */
 model RotateNode extends ShapeNodeBase {
-  `op`: "rotate";
-  shape: ShapeNode;
-  /** 回転軸ベクトル [ax, ay, az] */
-  axis: NumberOrExpr[];
-  /** 回転角度 (度) */
-  deg: NumberOrExpr;
+	`op`: "rotate";
+	shape: ShapeNode;
+	/** 回転軸ベクトル [ax, ay, az] */
+	axis: NumberOrExpr[];
+	/** 回転角度 (度) */
+	deg: NumberOrExpr;
 }
 
 /** 伸縮: 切断面で形状を分割して指定方向に伸ばす */
 model StretchNode extends ShapeNodeBase {
-  `op`: "stretch";
-  shape: ShapeNode;
-  /** 切断面の座標 [cx, cy, cz] (mm) */
-  cut: NumberOrExpr[];
-  /** 各軸方向の伸縮量 [dx, dy, dz] (mm) */
-  delta: NumberOrExpr[];
+	`op`: "stretch";
+	shape: ShapeNode;
+	/** 切断面の座標 [cx, cy, cz] (mm) */
+	cut: NumberOrExpr[];
+	/** 各軸方向の伸縮量 [dx, dy, dz] (mm) */
+	delta: NumberOrExpr[];
 }
 
 /**
@@ -190,14 +190,14 @@ model StretchNode extends ShapeNodeBase {
  * これが OpenAPI で oneOf + discriminator になりやすい
  */
 union ShapeNode {
-  step: StepNode,
-  `union`: UnionShapeNode,
-  intersect: IntersectNode,
-  subtract: SubtractNode,
-  scale: ScaleNode,
-  translate: TranslateNode,
-  rotate: RotateNode,
-  stretch: StretchNode,
+	step: StepNode,
+	`union`: UnionShapeNode,
+	intersect: IntersectNode,
+	subtract: SubtractNode,
+	scale: ScaleNode,
+	translate: TranslateNode,
+	rotate: RotateNode,
+	stretch: StretchNode,
 }
 
 // ---------------------------------------------------------------------------
@@ -205,60 +205,60 @@ union ShapeNode {
 // ---------------------------------------------------------------------------
 
 model UploadInput {
-  type: "upload";
-  label: string;
-  accept?: string;
-  maxSize?: int64;
-  /** アップロード済みファイルのURL */
-  value?: string;
+	type: "upload";
+	label: string;
+	accept?: string;
+	maxSize?: int64;
+	/** アップロード済みファイルのURL */
+	value?: string;
 }
 
 model TextInput {
-  type: "text";
-  label: string;
-  variant?: "text" | "area" | "email";
-  placeholder?: string;
-  `default`?: string;
-  value?: string;
+	type: "text";
+	label: string;
+	variant?: "text" | "area" | "email";
+	placeholder?: string;
+	`default`?: string;
+	value?: string;
 }
 
 model NumberConstraintRange {
-  min?: float64;
-  max?: float64;
-  step?: float64;
+	min?: float64;
+	max?: float64;
+	step?: float64;
 }
 
 model NumberConstraintEnum {
-  `enum`: float64[];
+	`enum`: float64[];
 }
 
 model NumberInput {
-  type: "number";
-  label: string;
-  unit?: string;
-  `default`?: float64;
-  constraint?: NumberConstraintRange | NumberConstraintEnum;
-  value?: float64;
+	type: "number";
+	label: string;
+	unit?: string;
+	`default`?: float64;
+	constraint?: NumberConstraintRange | NumberConstraintEnum;
+	value?: float64;
 }
 
 model SelectOption {
-  value: string;
-  label: string;
+	value: string;
+	label: string;
 }
 
 model SelectInput {
-  type: "select";
-  label: string;
-  `default`?: string;
-  options: SelectOption[];
-  value?: string;
+	type: "select";
+	label: string;
+	`default`?: string;
+	options: SelectOption[];
+	value?: string;
 }
 
 union Input {
-  upload: UploadInput,
-  text: TextInput,
-  number: NumberInput,
-  select: SelectInput,
+	upload: UploadInput,
+	text: TextInput,
+	number: NumberInput,
+	select: SelectInput,
 }
 
 // ---------------------------------------------------------------------------
@@ -268,42 +268,42 @@ union Input {
 union Axis { X: "X", Y: "Y", Z: "Z" }
 
 model ShapeOutput {
-  type: "shape";
-  label?: string;
-  shape: ShapeNode;
-  /** モデル座標系の上方向軸 */
-  axisUp?: Axis;
-  /** バウンディングボックスの最小値をゼロに揃える軸 */
-  axisGround?: Axis;
-  /** 中心揃えする軸の一覧 */
-  axisCenter?: Axis[];
+	type: "shape";
+	label?: string;
+	shape: ShapeNode;
+	/** モデル座標系の上方向軸 */
+	axisUp?: Axis;
+	/** バウンディングボックスの最小値をゼロに揃える軸 */
+	axisGround?: Axis;
+	/** 中心揃えする軸の一覧 */
+	axisCenter?: Axis[];
 }
 
 model BorderOutput {
-  type: "border";
+	type: "border";
 }
 
 model MessageOutput {
-  type: "message";
-  label: string;
-  messageType: "warning" | "error" | "text" | "info";
+	type: "message";
+	label: string;
+	messageType: "warning" | "error" | "text" | "info";
 }
 
 model ActionOutput {
-  type: "action";
-  label: string;
-  /** false=有効, true=無効, 文字列=無効理由 (例: "幅が大きすぎます") */
-  disable?: boolean | string;
-  email_to: string[];
-  email_bcc: string[];
-  slack: string[];
+	type: "action";
+	label: string;
+	/** false=有効, true=無効, 文字列=無効理由 (例: "幅が大きすぎます") */
+	disable?: boolean | string;
+	email_to: string[];
+	email_bcc: string[];
+	slack: string[];
 }
 
 union Output {
-  shape: ShapeOutput,
-  border: BorderOutput,
-  message: MessageOutput,
-  button: ActionOutput,
+	shape: ShapeOutput,
+	border: BorderOutput,
+	message: MessageOutput,
+	button: ActionOutput,
 }
 
 // ---------------------------------------------------------------------------
@@ -312,12 +312,12 @@ union Output {
 
 @route("/shape")
 namespace Shape {
-  /** ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す */
-  @post
-  op compute(@body shape: ShapeNode): {
-    @header contentType: "model/gltf-binary";
-    @body body: bytes;
-  };
+	/** ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す */
+	@post
+	op compute(@body shape: ShapeNode): {
+		@header contentType: "model/gltf-binary";
+		@body body: bytes;
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -325,16 +325,16 @@ namespace Shape {
 // ---------------------------------------------------------------------------
 
 model ActionRequest {
-  /** value フィールドが埋まった Input の辞書（キーはフォームのフィールド名） */
-  input: Record<Input>;
-  /** ボタン押下時点で lambda が返した出力（メール本文の生成に使う） */
-  output: Output[];
-  action: ActionOutput;
+	/** value フィールドが埋まった Input の辞書（キーはフォームのフィールド名） */
+	input: Record<Input>;
+	/** ボタン押下時点で lambda が返した出力（メール本文の生成に使う） */
+	output: Output[];
+	action: ActionOutput;
 }
 
 @route("/action")
 namespace Action {
-  /** inputの値とbuttonの宛先を受け取ってメール・Slack送信を行う */
-  @post
-  op action(@body body: ActionRequest): NoContentResponse | BadRequestResponse | ErrorResponse;
+	/** inputの値とbuttonの宛先を受け取ってメール・Slack送信を行う */
+	@post
+	op action(@body body: ActionRequest): NoContentResponse | BadRequestResponse | ErrorResponse;
 }
