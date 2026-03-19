@@ -45,6 +45,7 @@ export default function Home() {
 
       {/* ========== HERO ========== */}
       <section style={{
+        position: "relative",
         backgroundColor: "#fff",
         padding: "80px 40px",
         display: "flex",
@@ -53,14 +54,19 @@ export default function Home() {
         gap: 60,
         flexWrap: "wrap",
       }}>
-        <div style={{ maxWidth: 520 }}>
-          <div style={{ color: accent, fontSize: 14, fontWeight: 700, marginBottom: 16, letterSpacing: 2 }}>
-            3Dパラメトリック発注フォーム
-          </div>
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "url(/background.jpg)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          opacity: 0.15,
+          pointerEvents: "none",
+        }} />
+        <div style={{ maxWidth: 520, position: "relative" }}>
           <h1 style={{ color: navy, fontSize: 36, fontWeight: 800, lineHeight: 1.4, margin: "0 0 20px 0" }}>
-            3Dデータをアップロード。<br />
-            自社サイトに<br />
-            見積もりフォームを即公開。
+            寸法が変わる<br />
+            3D見積もりフォーム
           </h1>
           <p style={{ color: "#666", fontSize: 16, lineHeight: 1.8, margin: "0 0 32px 0" }}>
             STEPファイルから、寸法変更・即時見積もり・3Dプレビュー付きの
@@ -89,6 +95,7 @@ export default function Home() {
           </div>
         </div>
         <div style={{
+          position: "relative",
           width: 520,
           height: 340,
           backgroundColor: gray,
@@ -140,7 +147,6 @@ export default function Home() {
       {/* ========== FEATURES ========== */}
       <section id="features" style={{ backgroundColor: gray, padding: "80px 40px" }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <div style={{ color: accent, fontSize: 14, fontWeight: 700, marginBottom: 8 }}>FEATURES</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: navy, margin: 0 }}>katachiform の特長</h2>
         </div>
         <div style={{
@@ -200,7 +206,6 @@ export default function Home() {
       {/* ========== HOW TO USE ========== */}
       <section id="howto" style={{ backgroundColor: "#fff", padding: "80px 40px" }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <div style={{ color: accent, fontSize: 14, fontWeight: 700, marginBottom: 8 }}>HOW TO USE</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: navy, margin: 0 }}>かんたん3ステップ</h2>
         </div>
         <div style={{
@@ -270,7 +275,6 @@ export default function Home() {
         padding: "80px 40px",
       }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <div style={{ color: accent, fontSize: 14, fontWeight: 700, marginBottom: 8 }}>BEFORE / AFTER</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: "#fff", margin: 0 }}>見積もり業務がこう変わる</h2>
         </div>
         <div style={{
@@ -318,7 +322,6 @@ export default function Home() {
       {/* ========== EXAMPLES ========== */}
       <section id="examples" style={{ backgroundColor: gray, padding: "80px 40px" }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <div style={{ color: accent, fontSize: 14, fontWeight: 700, marginBottom: 8 }}>EXAMPLES</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: navy, margin: 0 }}>こんな製品に対応しています</h2>
           <p style={{ color: "#666", fontSize: 14, marginTop: 12 }}>
             板金・切削・旋削・押出など、さまざまな加工品の3D発注フォームを作成できます
@@ -378,7 +381,6 @@ export default function Home() {
       {/* ========== TARGET INDUSTRIES ========== */}
       <section style={{ backgroundColor: "#fff", padding: "80px 40px" }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <div style={{ color: accent, fontSize: 14, fontWeight: 700, marginBottom: 8 }}>TARGET</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: navy, margin: 0 }}>こんな企業様におすすめ</h2>
         </div>
         <div style={{
@@ -409,7 +411,6 @@ export default function Home() {
         padding: "80px 40px",
       }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <div style={{ color: accent, fontSize: 14, fontWeight: 700, marginBottom: 8 }}>PRICING</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: "#fff", margin: 0 }}>料金プラン</h2>
         </div>
         <div style={{
@@ -479,7 +480,6 @@ export default function Home() {
       {/* ========== FAQ ========== */}
       <section id="faq" style={{ backgroundColor: "#fff", padding: "80px 40px" }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <div style={{ color: accent, fontSize: 14, fontWeight: 700, marginBottom: 8 }}>FAQ</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: navy, margin: 0 }}>よくあるご質問</h2>
         </div>
         <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", gap: 0 }}>
@@ -646,7 +646,7 @@ export default function Home() {
           <div>
             <div style={{ color: accent, fontSize: 20, fontWeight: 800, marginBottom: 12 }}>katachiform</div>
             <p style={{ color: textLight, fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-              3Dパラメトリック発注フォームSaaS<br />
+              セミオーダー品の3D見積もりフォームSaaS<br />
               製造業の見積もり・受注を自動化
             </p>
           </div>
