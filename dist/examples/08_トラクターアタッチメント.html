@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>08_トラクターアタッチメント</title>
+</head>
+<body>
+    <h1>08_トラクターアタッチメント</h1>
+    <script src="https://unpkg.com/lambda360form@0.1.8/dist/lambda360form.js"></script>
+    <div id="app"></div>
+    <script>
+        const params = {
+  width: { type: "number", label: "幅", unit: "mm", default: 1500, constraint: { min: 800, max: 2400, step: 100 } },
+  reach: { type: "number", label: "リーチ", unit: "mm", default: 600, constraint: { min: 300, max: 1200, step: 100 } },
+  color: { type: "select", label: "色", default: "#ff8800", options: [
+    { value: "#ff8800", label: "#ff8800" },
+    { value: "#228800", label: "#228800" },
+    { value: "#cc2200", label: "#cc2200" }
+  ] }
+};
+const lambda = (params2) => [
+  { type: "shape", shape: {
+    op: "stretch",
+    shape: { op: "step", content_hash: "" },
+    cut: [params2.width * 0.5, params2.reach * 0.5, 0],
+    delta: [params2.width - 1500, params2.reach - 600, 0]
+  } },
+  { type: "message", messageType: "text", label: `価格: ¥${(5e4 + params2.width * 30 + params2.reach * 20).toLocaleString()}` }
+];
+        Lambda360.initLambda360('#app', { input: params, lambda: lambda });
+    </script>
+</body>
+</html>

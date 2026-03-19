@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>13_デッキフィッティング</title>
+</head>
+<body>
+    <h1>13_デッキフィッティング</h1>
+    <script src="https://unpkg.com/lambda360form@0.1.8/dist/lambda360form.js"></script>
+    <div id="app"></div>
+    <script>
+        const params = {
+  angle: { type: "number", label: "角度", unit: "°", default: 90, constraint: { enum: [45, 60, 90, 135] } },
+  thickness: { type: "number", label: "板厚", unit: "mm", default: 5, constraint: { enum: [3, 4, 5, 6, 8] } },
+  color: { type: "select", label: "色", default: "#888888", options: [
+    { value: "#888888", label: "#888888" },
+    { value: "#c0c0c0", label: "#c0c0c0" },
+    { value: "#4a4a4a", label: "#4a4a4a" }
+  ] }
+};
+const lambda = (params2) => [
+  { type: "shape", shape: { op: "step", content_hash: "" } },
+  { type: "message", messageType: "text", label: `価格: ¥${(300 + params2.thickness * 80).toLocaleString()}` }
+];
+        Lambda360.initLambda360('#app', { input: params, lambda: lambda });
+    </script>
+</body>
+</html>

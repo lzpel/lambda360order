@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>15_太陽光パネル架台</title>
+</head>
+<body>
+    <h1>15_太陽光パネル架台</h1>
+    <script src="https://unpkg.com/lambda360form@0.1.8/dist/lambda360form.js"></script>
+    <div id="app"></div>
+    <script>
+        const params = {
+  tilt: { type: "number", label: "傾斜角", unit: "°", default: 15, constraint: { enum: [10, 15, 20, 25, 30] } },
+  width: { type: "number", label: "幅", unit: "mm", default: 1e3, constraint: { min: 800, max: 2e3, step: 100 } },
+  color: { type: "select", label: "色", default: "#aaaaaa", options: [
+    { value: "#aaaaaa", label: "#aaaaaa" },
+    { value: "#888888", label: "#888888" }
+  ] }
+};
+const lambda = (params2) => [
+  { type: "shape", shape: {
+    op: "stretch",
+    shape: { op: "step", content_hash: "" },
+    cut: [params2.width * 0.5, 0, 0],
+    delta: [params2.width - 1e3, 0, 0]
+  } },
+  { type: "message", messageType: "text", label: `価格: ¥${(4e3 + params2.width * 5 + params2.tilt * 100).toLocaleString()}` }
+];
+        Lambda360.initLambda360('#app', { input: params, lambda: lambda });
+    </script>
+</body>
+</html>

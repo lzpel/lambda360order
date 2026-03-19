@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>07_19インチサーバーラック</title>
+</head>
+<body>
+    <h1>07_19インチサーバーラック</h1>
+    <script src="https://unpkg.com/lambda360form@0.1.8/dist/lambda360form.js"></script>
+    <div id="app"></div>
+    <script>
+        const params = {
+  units: { type: "number", label: "ユニット数(U)", unit: "U", default: 12, constraint: { enum: [6, 9, 12, 18, 24, 42] } },
+  depth: { type: "number", label: "奥行き", unit: "mm", default: 600, constraint: { min: 450, max: 1e3, step: 50 } },
+  color: { type: "select", label: "色", default: "#222222", options: [
+    { value: "#222222", label: "#222222" },
+    { value: "#eeeeee", label: "#eeeeee" }
+  ] }
+};
+const lambda = (params2) => [
+  { type: "shape", shape: {
+    op: "stretch",
+    shape: { op: "step", content_hash: "" },
+    cut: [0, params2.depth * 0.5, params2.units * 22.225 * 0.5],
+    delta: [0, params2.depth - 600, params2.units * 22.225 - 12 * 22.225]
+  } },
+  { type: "message", messageType: "text", label: `価格: ¥${(15e3 + params2.units * 800 + params2.depth * 10).toLocaleString()}` }
+];
+        Lambda360.initLambda360('#app', { input: params, lambda: lambda });
+    </script>
+</body>
+</html>

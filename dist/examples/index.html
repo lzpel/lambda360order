@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>lambda360form デモ一覧 v0.1.8</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { display: flex; height: 100vh; font-family: sans-serif; }
+        nav { width: 260px; border-right: 1px solid #e0e0e0; overflow-y: auto; flex-shrink: 0; padding: 16px 0; }
+        nav h1 { font-size: 1em; padding: 0 16px 12px; color: #333; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; }
+        ul { list-style: none; }
+        li a { display: block; padding: 10px 16px; text-decoration: none; color: #333; font-size: 0.9em; border-left: 3px solid transparent; }
+        li a:hover { background: #f5f5f5; }
+        li a.active { border-left-color: #0066cc; background: #f0f4ff; font-weight: bold; color: #0066cc; }
+        iframe { flex: 1; border: none; }
+    </style>
+</head>
+<body>
+    <nav>
+        <h1>lambda360form v0.1.8</h1>
+        <ul>
+
+            <li><a href="01_板金制御盤ボックス.html">01_板金制御盤ボックス<small style="display:block;color:#666;font-weight:normal">01. 板金加工 — 制御盤ボックス / Sheet Metal Control Panel Box</small></a></li>
+
+            <li><a href="02_セミオーダーカラー.html">02_セミオーダーカラー<small style="display:block;color:#666;font-weight:normal">02. 精密機械・研究機器 — セミオーダー金属カラー／スペーサー / Semi-Custom Metal Collar &amp; Spacer</small></a></li>
+
+            <li><a href="03_アルミパーティションフレーム.html">03_アルミパーティションフレーム<small style="display:block;color:#666;font-weight:normal">02. アルミ押出・建材 — パーティションフレーム / Aluminum Extrusion Office Partition Frame</small></a></li>
+
+            <li><a href="04_カスタムブラケット.html">04_カスタムブラケット<small style="display:block;color:#666;font-weight:normal">03. 機械部品 — オーダーメイドブラケット / Custom Sheet Metal Bracket</small></a></li>
+
+            <li><a href="05_カスタムエンクロージャ.html">05_カスタムエンクロージャ<small style="display:block;color:#666;font-weight:normal">04. 電子機器筐体 — カスタムエンクロージャ / Custom Electronics Enclosure</small></a></li>
+
+            <li><a href="06_カスタムマニホールド.html">06_カスタムマニホールド<small style="display:block;color:#666;font-weight:normal">05. 配管・流体機器 — カスタムマニホールド / Custom Hydraulic / Pneumatic Manifold</small></a></li>
+
+            <li><a href="07_19インチサーバーラック.html">07_19インチサーバーラック<small style="display:block;color:#666;font-weight:normal">06. データセンター・IT インフラ — 19インチフロアスタンディングサーバーラック / 19-Inch Floor-Standing Server Rack</small></a></li>
+
+            <li><a href="08_トラクターアタッチメント.html">08_トラクターアタッチメント<small style="display:block;color:#666;font-weight:normal">07. 農業機械 — アタッチメントブラケット / Tractor 3-Point Hitch Attachment Bracket</small></a></li>
+
+            <li><a href="09_足場クランプ.html">09_足場クランプ<small style="display:block;color:#666;font-weight:normal">08. 建設・土木 — 足場クランプ部品 / Scaffold Tube Clamp</small></a></li>
+
+            <li><a href="10_プレキャストコンクリート部材.html">10_プレキャストコンクリート部材<small style="display:block;color:#666;font-weight:normal">09. 建設・土木 — プレキャストコンクリート部材（積算付き） / Precast Concrete Beam with Cost Estimation</small></a></li>
+
+            <li><a href="11_ウェーハ搬送治具.html">11_ウェーハ搬送治具<small style="display:block;color:#666;font-weight:normal">10. 半導体製造 — ウェーハ搬送治具 / Semiconductor Wafer Carrier Cassette</small></a></li>
+
+            <li><a href="12_配管サポートクランプ.html">12_配管サポートクランプ<small style="display:block;color:#666;font-weight:normal">11. 化学・石油プラント — 配管サポートクランプ / Insulated Pipe Support Clamp</small></a></li>
+
+            <li><a href="13_デッキフィッティング.html">13_デッキフィッティング<small style="display:block;color:#666;font-weight:normal">12. 船舶・海洋 — デッキフィッティング / Marine Deck Fitting</small></a></li>
+
+            <li><a href="14_ケーブルトレー.html">14_ケーブルトレー<small style="display:block;color:#666;font-weight:normal">13. データセンター — カスタムケーブルトレー / Custom Server Rack Cable Tray</small></a></li>
+
+            <li><a href="15_太陽光パネル架台.html">15_太陽光パネル架台<small style="display:block;color:#666;font-weight:normal">14. 再生可能エネルギー — 太陽光パネル架台 / Solar Panel Mounting Structure</small></a></li>
+
+            <li><a href="16_光学ベンチアダプタ.html">16_光学ベンチアダプタ<small style="display:block;color:#666;font-weight:normal">15. 実験・研究機器 — 光学ベンチアダプタ / Optical Bench Post &amp; Adapter</small></a></li>
+
+            <li><a href="17_スチールラック.html">17_スチールラック<small style="display:block;color:#666;font-weight:normal">16. 家具・什器 — スチールラック / Steel Storage Shelving Rack</small></a></li>
+
+            <li><a href="18_カスタムアンダーカバー.html">18_カスタムアンダーカバー<small style="display:block;color:#666;font-weight:normal">17. 自動車アフターマーケット — カスタムアンダーカバー / Custom Underbody Skid Plate Cover</small></a></li>
+
+            <li><a href="19_配管フランジ.html">19_配管フランジ<small style="display:block;color:#666;font-weight:normal">18. 流体・配管機器 — 配管フランジ / Pipe Flange (Revolved)</small></a></li>
+
+            <li><a href="20_旋削シャフト.html">20_旋削シャフト<small style="display:block;color:#666;font-weight:normal">20. 機械部品 — 旋削段付きシャフト / Turned Stepped Shaft (Revolved)</small></a></li>
+
+        </ul>
+    </nav>
+    <iframe id="preview" src="about:blank"></iframe>
+    <script>
+        const preview = document.getElementById('preview');
+        function select(a) {
+            document.querySelectorAll('nav a').forEach(x => x.classList.remove('active'));
+            a.classList.add('active');
+            preview.src = a.href;
+        }
+        document.querySelectorAll('nav a').forEach(a => {
+            a.addEventListener('click', e => { e.preventDefault(); select(a); });
+        });
+        const first = document.querySelector('nav a');
+        if (first) select(first);
+    </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>03_アルミパーティションフレーム</title>
+</head>
+<body>
+    <h1>03_アルミパーティションフレーム</h1>
+    <script src="https://unpkg.com/lambda360form@0.1.8/dist/lambda360form.js"></script>
+    <div id="app"></div>
+    <script>
+        const params = {
+  width: { type: "number", label: "幅", unit: "mm", default: 900, constraint: { min: 600, max: 1800, step: 100 } },
+  height: { type: "number", label: "高さ", unit: "mm", default: 1800, constraint: { min: 900, max: 2400, step: 100 } },
+  color: { type: "select", label: "色", default: "#c0c0c0", options: [
+    { value: "#c0c0c0", label: "#c0c0c0" },
+    { value: "#e8e8e8", label: "#e8e8e8" },
+    { value: "#4a4a4a", label: "#4a4a4a" }
+  ] }
+};
+const lambda = (params2) => [
+  { type: "shape", shape: {
+    op: "stretch",
+    shape: { op: "step", content_hash: "" },
+    cut: [params2.width * 0.5, 0, params2.height * 0.5],
+    delta: [params2.width - 900, 0, params2.height - 1800]
+  } },
+  { type: "message", messageType: "text", label: `価格: ¥${(3e3 + params2.width * 5 + params2.height * 3).toLocaleString()}` }
+];
+        Lambda360.initLambda360('#app', { input: params, lambda: lambda });
+    </script>
+</body>
+</html>

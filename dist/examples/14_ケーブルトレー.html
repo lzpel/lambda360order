@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>14_ケーブルトレー</title>
+</head>
+<body>
+    <h1>14_ケーブルトレー</h1>
+    <script src="https://unpkg.com/lambda360form@0.1.8/dist/lambda360form.js"></script>
+    <div id="app"></div>
+    <script>
+        const params = {
+  width: { type: "number", label: "幅", unit: "mm", default: 200, constraint: { enum: [100, 150, 200, 300, 400, 600] } },
+  length: { type: "number", label: "長さ", unit: "mm", default: 2e3, constraint: { min: 500, max: 3e3, step: 500 } },
+  color: { type: "select", label: "色", default: "#bbbbbb", options: [
+    { value: "#bbbbbb", label: "#bbbbbb" },
+    { value: "#888888", label: "#888888" },
+    { value: "#ffcc00", label: "#ffcc00" }
+  ] }
+};
+const lambda = (params2) => [
+  { type: "shape", shape: {
+    op: "stretch",
+    shape: { op: "step", content_hash: "" },
+    cut: [params2.width * 0.5, params2.length * 0.5, 0],
+    delta: [params2.width - 200, params2.length - 2e3, 0]
+  } },
+  { type: "message", messageType: "text", label: `価格: ¥${(1500 + params2.width * 3 + params2.length * 1).toLocaleString()}` }
+];
+        Lambda360.initLambda360('#app', { input: params, lambda: lambda });
+    </script>
+</body>
+</html>
