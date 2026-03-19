@@ -1,11 +1,10 @@
 {
   "name": "lambda360form",
-  "version": "0.1.7",
+  "version": "0.1.10",
   "type": "module",
   "module": "dist/esm/index.js",
   "types": "dist/esm/src/Lambda360Form.d.ts",
   "scripts": {
-    "generate": "npx tsx src/generateDemos.ts",
     "dev": "vite build --watch",
     "build": "vite build && vite build --mode lib"
   },
