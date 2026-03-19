@@ -22,7 +22,7 @@ export const lambda = (params: Record<string, any>): Output[] => [
 		shape: {
 			op: "stretch",
 			shape: { op: "step", content_hash: "c648cc3352136f4db46d0cbe133b6cf5bf9d208889186d0138ad9d671da72484" },
-			cut: [100, 10, 100],
+			cut: [100, 10, -100],
 			delta: [params.width - 200, params.height - 100, params.depth - 200],
 		},
 	},

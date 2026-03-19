@@ -7,10 +7,10 @@ import OutputItem from './Output';
 export interface Lambda360FormProps {
 	input: Record<string, Input>;
 	lambda: (input: Record<string, any>) => Output[];
-	origin_url?: string;
+	serverUrl?: string;
 }
 
-export default function Lambda360Form({ input: inputSchema, lambda, origin_url }: Lambda360FormProps) {
+export default function Lambda360Form({ input: inputSchema, lambda, serverUrl }: Lambda360FormProps) {
 	const [values, setValues] = useState<Record<string, any>>(() => {
 		const initial: Record<string, any> = {};
 		for (const [key, def] of Object.entries(inputSchema || {})) {
@@ -56,7 +56,7 @@ export default function Lambda360Form({ input: inputSchema, lambda, origin_url }
 			{outputs.length > 0 && (
 				<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 					{outputs.map((out, i) =>
-						<OutputItem key={i} out={out} origin_url={origin_url} inputSchema={inputSchema} values={values} outputs={outputs} />
+						<OutputItem key={i} out={out} serverUrl={serverUrl} inputSchema={inputSchema} values={values} outputs={outputs} />
 					)}
 				</div>
 			)}

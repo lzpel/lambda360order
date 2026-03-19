@@ -7,10 +7,10 @@ import type { ShapeNode } from '@/out/client';
 
 export interface Lambda360ShapeProps extends Omit<ComponentProps<typeof Lambda360View>, 'model'> {
   shape: ShapeNode;
-  origin_url?: string;
+  serverUrl?: string;
 }
 
-export default function Lambda360Shape({ shape, origin_url = '', ...props }: Lambda360ShapeProps) {
+export default function Lambda360Shape({ shape, serverUrl = '', ...props }: Lambda360ShapeProps) {
   const [model, setModel] = useState<ArrayBuffer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ export default function Lambda360Shape({ shape, origin_url = '', ...props }: Lam
     setLoading(true);
     setError(null);
 
-    const baseUrl = origin_url ? `${origin_url}/api` : '/api';
+    const baseUrl = serverUrl ? `${serverUrl}/api` : '/api';
     const customClient = createClient(createConfig({ baseUrl }));
 
     shapeCompute({ body: shape, client: customClient, parseAs: 'blob' })
@@ -55,7 +55,7 @@ export default function Lambda360Shape({ shape, origin_url = '', ...props }: Lam
     return () => {
       controller.abort();
     };
-  }, [shape, origin_url]);
+  }, [shape, serverUrl]);
 
   let centerNode = null;
   if (error) {

@@ -44,7 +44,7 @@ export default function Page() {
   return (
     <>
       <h1>{name}</h1>
-      <Lambda360Form input={params} lambda={lambda} />
+      <Lambda360Form input={params} lambda={lambda} serverUrl={process.env.SERVER_URL}/>
     </>
   );
 }

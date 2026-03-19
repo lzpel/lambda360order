@@ -5,13 +5,13 @@ import type { Input as InputDef, Output as OutputDef } from '@/out/client';
 
 interface OutputProps {
 	out: OutputDef;
-	origin_url?: string;
+	serverUrl?: string;
 	inputSchema: Record<string, InputDef>;
 	values: Record<string, any>;
 	outputs: OutputDef[];
 }
 
-export default function Output({ out, origin_url, inputSchema, values, outputs }: OutputProps) {
+export default function Output({ out, serverUrl, inputSchema, values, outputs }: OutputProps) {
 	if (out.type === 'shape') {
 		return (
 			<div style={{ width: '100%', height: '400px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ddd' }}>
@@ -22,7 +22,7 @@ export default function Output({ out, origin_url, inputSchema, values, outputs }
 					showEdges={true}
 					showViewMenu={true}
 					orthographic={true}
-					origin_url={origin_url}
+					serverUrl={serverUrl}
 					axisUp={out.axisUp}
 					axisGround={out.axisGround}
 					axisCenter={out.axisCenter}
@@ -70,7 +70,7 @@ export default function Output({ out, origin_url, inputSchema, values, outputs }
 				<button
 					disabled={disabled}
 					onClick={() => {
-						const baseUrl = origin_url ? `${origin_url}/api` : '/api';
+						const baseUrl = serverUrl ? `${serverUrl}/api` : '/api';
 						const customClient = createClient(createConfig({ baseUrl }));
 						const inputWithValues = Object.fromEntries(
 							Object.entries(inputSchema).map(([key, def]) => [key, { ...def, value: values[key] }])

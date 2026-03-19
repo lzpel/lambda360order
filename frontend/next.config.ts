@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   assetPrefix: process.env.REPONAME ? `/${process.env.REPONAME}/` : undefined,
   env: {
     NEXT_PUBLIC_PREFIX: process.env.REPONAME ? `/${process.env.REPONAME}` : "",
+    SERVER_URL: process.env.REPONAME ? "https://d3l2x153v6axn.cloudfront.net" : undefined
   },
   // 画像最適化は静的エクスポートでは使用不可
   images: {

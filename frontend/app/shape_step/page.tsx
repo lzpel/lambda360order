@@ -10,6 +10,6 @@ const testShape: ShapeNode = {
 
 export default function ShapePage() {
   return (
-    <Lambda360Shape shape={testShape} origin_url="https://d3l2x153v6axn.cloudfront.net" />
+    <Lambda360Shape shape={testShape} serverUrl={process.env.SERVER_URL} />
   );
 }
