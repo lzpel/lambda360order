@@ -3,10 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // GitHub Pagesへの静的エクスポート
   output: "export",
-	basePath: process.env.NEXT_PUBLIC_REPO ? `/${process.env.NEXT_PUBLIC_REPO}` : undefined,
-	assetPrefix: process.env.NEXT_PUBLIC_REPO ? `/${process.env.NEXT_PUBLIC_REPO}/` : undefined,
+	basePath: process.env.REPONAME ? `/${process.env.REPONAME}` : undefined,
+	assetPrefix: process.env.REPONAME ? `/${process.env.REPONAME}/` : undefined,
 	env: {
-		NEXT_PUBLIC_PREFIX: process.env.NEXT_PUBLIC_REPO ? `/${process.env.NEXT_PUBLIC_REPO}` : "",
+		NEXT_PUBLIC_PREFIX: process.env.REPONAME ? `/${process.env.REPONAME}` : "",
 	},
   // 画像最適化は静的エクスポートでは使用不可
   images: {

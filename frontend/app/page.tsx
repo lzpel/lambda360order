@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import list from './out/list.json';
 
 export default function Home() {
   return (
@@ -11,7 +12,10 @@ export default function Home() {
         <li><Link href="/color_stretch">Lambda360Shape ColorStretchデモ (カラーモデルの伸縮)</Link></li>
         <li><Link href="/form_box">Lambda360Form Widget Demo (ボックス形状の伸縮)</Link></li>
         <li><Link href="/widget">ウィジェット埋め込みデモ (UMD/IIFE)</Link></li>
-        <li><a href="https://unpkg.com/lambda360form@latest/dist/index.html" target="_blank" rel="noopener noreferrer">lambda360form サンプル一覧 (unpkg)</a></li>
+        <li><a href="https://unpkg.com/lambda360form@latest/dist/nameDirectory.html" target="_blank" rel="noopener noreferrer">lambda360form サンプル一覧 (unpkg)</a></li>
+        {list.map(({ nameDirectory, name }) => (
+          <li key={nameDirectory}><Link href={`/out/${nameDirectory}`}>{name}</Link></li>
+        ))}
       </ul>
     </main>
   );
