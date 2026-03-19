@@ -121,29 +121,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ========== STATS BAR ========== */}
-      <section style={{
-        backgroundColor: "#fff",
-        borderBottom: "1px solid #e0e0e0",
-        padding: "32px 40px",
-        display: "flex",
-        justifyContent: "center",
-        gap: 80,
-        flexWrap: "wrap",
-      }}>
-        {[
-          { num: "20+", label: "対応製品テンプレート" },
-          { num: "3D", label: "リアルタイムプレビュー" },
-          { num: "24/365", label: "自動見積もり対応" },
-          { num: "1行", label: "で埋め込み完了" },
-        ].map((s, i) => (
-          <div key={i} style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: navy }}>{s.num}</div>
-            <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>{s.label}</div>
-          </div>
-        ))}
-      </section>
-
       {/* ========== FEATURES ========== */}
       <section id="features" style={{ backgroundColor: gray, padding: "80px 40px" }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
