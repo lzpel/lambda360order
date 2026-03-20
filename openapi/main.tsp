@@ -264,6 +264,27 @@ union Input {
 
 union Axis { X: "X", Y: "Y", Z: "Z" }
 
+model PointAnnotation {
+	type: "point";
+	/** モデル座標系の点 [x, y, z] (mm) */
+	position: float64[];
+	label: string;
+}
+
+model DistanceAnnotation {
+	type: "distance";
+	/** 計測開始点 [x, y, z] (mm) */
+	start: float64[];
+	/** 計測終了点 [x, y, z] (mm) */
+	end: float64[];
+	label: string;
+}
+
+union Annotation {
+	point: PointAnnotation,
+	distance: DistanceAnnotation,
+}
+
 model ShapeOutput {
 	type: "shape";
 	label?: string;
@@ -274,6 +295,7 @@ model ShapeOutput {
 	axisGround?: Axis;
 	/** 中心揃えする軸の一覧 */
 	axisCenter?: Axis[];
+	annotations?: Annotation[];
 }
 
 model BorderOutput {

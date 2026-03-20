@@ -10,21 +10,24 @@ export default function Output(props: {
 }) {
 	if (props.out.type === 'shape') {
 		return (
-			<div style={{ width: '100%', height: '400px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ddd' }}>
-				<Lambda360Shape
-					shape={props.out.shape}
-					backgroundColor="#f5f5f5"
-					edgeColor="#333333"
-					showEdges={true}
-					showViewMenu={true}
-					orthographic={true}
-					serverUrl={props.serverUrl}
-					axisUp={props.out.axisUp}
-					axisGround={props.out.axisGround}
-					axisCenter={props.out.axisCenter}
-					style={{ width: '100%', height: '100%' }}
-				/>
-			</div>
+			<Lambda360Shape
+				shape={props.out.shape}
+				backgroundColor="white"
+				edgeColor="#333333"
+				showEdges={true}
+				showViewMenu={true}
+				orthographic={true}
+				serverUrl={props.serverUrl}
+				axisUp={props.out.axisUp}
+				axisGround={props.out.axisGround}
+				axisCenter={props.out.axisCenter}
+				annotations={props.out.annotations?.map(a =>
+					a.type === 'point'
+						? { ...a, position: [a.position[0], a.position[1], a.position[2]] as [number, number, number] }
+						: { ...a, start: [a.start[0], a.start[1], a.start[2]] as [number, number, number], end: [a.end[0], a.end[1], a.end[2]] as [number, number, number] }
+				)}
+				style={{ width: '100%', aspectRatio: '4/4', borderRadius: '8px', border: '1px solid #ddd' }}
+			/>
 		);
 	}
 
@@ -34,10 +37,10 @@ export default function Output(props: {
 
 	if (props.out.type === 'message') {
 		const styles: Record<string, { bg: string; border: string; color: string; icon: string }> = {
-			error:   { bg: '#fff0f0', border: '#ffcccc', color: '#cc0000', icon: '✕' },
+			error: { bg: '#fff0f0', border: '#ffcccc', color: '#cc0000', icon: '✕' },
 			warning: { bg: '#fffbea', border: '#ffe58f', color: '#ad6800', icon: '⚠' },
-			info:	{ bg: '#e8f4fd', border: '#b8daff', color: '#0c5460', icon: 'ℹ' },
-			text:	{ bg: '#f8f8f8', border: '#e0e0e0', color: '#333333', icon: '' },
+			info: { bg: '#e8f4fd', border: '#b8daff', color: '#0c5460', icon: 'ℹ' },
+			text: { bg: '#f8f8f8', border: '#e0e0e0', color: '#333333', icon: '' },
 		};
 		const s = styles[props.out.messageType] ?? styles.text;
 		return (

@@ -6,98 +6,98 @@ import { shapeCompute } from '@/out/client';
 import type { ShapeNode } from '@/out/client';
 
 export interface Lambda360ShapeProps extends Omit<ComponentProps<typeof Lambda360View>, 'model'> {
-  shape: ShapeNode;
-  serverUrl?: string;
+	shape: ShapeNode;
+	serverUrl?: string;
 }
 
 export default function Lambda360Shape({ shape, serverUrl = '', ...props }: Lambda360ShapeProps) {
-  const [model, setModel] = useState<ArrayBuffer | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const abortRef = useRef<AbortController | null>(null);
+	const [model, setModel] = useState<ArrayBuffer | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(true);
+	const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    // Abort previous in-flight request
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+	useEffect(() => {
+		// Abort previous in-flight request
+		abortRef.current?.abort();
+		const controller = new AbortController();
+		abortRef.current = controller;
 
-    setLoading(true);
-    setError(null);
+		setLoading(true);
+		setError(null);
 
-    const baseUrl = serverUrl ? `${serverUrl}/api` : '/api';
-    const customClient = createClient(createConfig({ baseUrl }));
+		const baseUrl = serverUrl ? `${serverUrl}/api` : '/api';
+		const customClient = createClient(createConfig({ baseUrl }));
 
-    shapeCompute({ body: shape, client: customClient, parseAs: 'blob' })
-      .then(async (res) => {
-        if (controller.signal.aborted) return;
-        if (res.data) {
-          const buf = await (res.data as Blob).arrayBuffer();
-          if (!controller.signal.aborted) {
-            setModel(buf);
-          }
-        } else {
-          if (!controller.signal.aborted) {
-            setError('GLBの取得に失敗しました');
-          }
-        }
-      })
-      .catch((err: unknown) => {
-        if (controller.signal.aborted) return;
-        setError(String(err));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
+		shapeCompute({ body: shape, client: customClient, parseAs: 'blob' })
+			.then(async (res) => {
+				if (controller.signal.aborted) return;
+				if (res.data) {
+					const buf = await (res.data as Blob).arrayBuffer();
+					if (!controller.signal.aborted) {
+						setModel(buf);
+					}
+				} else {
+					if (!controller.signal.aborted) {
+						setError('GLBの取得に失敗しました');
+					}
+				}
+			})
+			.catch((err: unknown) => {
+				if (controller.signal.aborted) return;
+				setError(String(err));
+			})
+			.finally(() => {
+				if (!controller.signal.aborted) {
+					setLoading(false);
+				}
+			});
 
-    return () => {
-      controller.abort();
-    };
-  }, [shape, serverUrl]);
+		return () => {
+			controller.abort();
+		};
+	}, [shape, serverUrl]);
 
-  let centerNode = null;
-  if (error) {
-    centerNode = (
-      <div style={{
-        padding: '12px 20px',
-        backgroundColor: '#fff',
-        borderRadius: '6px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        fontSize: '14px',
-        color: '#cc0000',
-        border: '1px solid #ffcccc',
-      }}>
-        Error: {error}
-      </div>
-    );
-  } else if (loading) {
-    centerNode = (
-      <div style={{
-        padding: '8px 16px',
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        borderRadius: '6px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        fontSize: '14px',
-        color: '#666',
-      }}>
-        {model ? 'Updating Model...' : 'Loading...'}
-      </div>
-    );
-  } else if (!model) {
-    centerNode = (
-      <div style={{ color: '#999' }}>
-        No model
-      </div>
-    );
-  }
+	let centerNode = null;
+	if (error) {
+		centerNode = (
+			<div style={{
+				padding: '12px 20px',
+				backgroundColor: '#fff',
+				borderRadius: '6px',
+				boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+				fontSize: '14px',
+				color: '#cc0000',
+				border: '1px solid #ffcccc',
+			}}>
+				Error: {error}
+			</div>
+		);
+	} else if (loading) {
+		centerNode = (
+			<div style={{
+				padding: '8px 16px',
+				backgroundColor: 'rgba(255, 255, 255, 0.9)',
+				borderRadius: '6px',
+				boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+				fontSize: '14px',
+				color: '#666',
+			}}>
+				{model ? 'Updating Model...' : 'Loading...'}
+			</div>
+		);
+	} else if (!model) {
+		centerNode = (
+			<div style={{ color: '#999' }}>
+				No model
+			</div>
+		);
+	}
 
-  return (
-    <Lambda360View
-      model={model}
-      nodeCenter={centerNode}
-      {...props}
-    />
-  );
+	return (
+		<Lambda360View
+			model={model}
+			nodeCenter={centerNode}
+			{...props}
+		/>
+	);
 }
