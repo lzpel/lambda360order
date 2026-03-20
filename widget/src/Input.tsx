@@ -1,14 +1,37 @@
 import type { Input as InputDef } from '@/out/client';
 
+const readOnlyValueStyle: React.CSSProperties = {
+	padding: '10px',
+	border: '1px solid #eee',
+	borderRadius: '6px',
+	fontSize: '14px',
+	backgroundColor: '#f5f5f5',
+	color: '#555',
+	minHeight: '38px',
+};
+
 export default function Input(props: {
 	name: string;
 	def: InputDef;
 	value: any;
 	onChange: (value: any) => void;
 	fileInputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
+	readOnly?: boolean;
 }) {
 	const def = props.def;
+
 	if (def.type === 'upload') {
+		const fileName = props.value
+			? (typeof props.value === 'string' ? props.value : (props.value as File).name)
+			: '—';
+		if (props.readOnly) {
+			return (
+				<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+					<label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>
+					<div style={readOnlyValueStyle}>{fileName}</div>
+				</div>
+			);
+		}
 		return (
 			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 				<label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>
@@ -24,9 +47,7 @@ export default function Input(props: {
 					onClick={() => props.fileInputRefs.current[props.name]?.click()}
 				>
 					{props.value ? (
-						<span style={{ fontSize: '13px', color: '#0066cc' }}>
-							{typeof props.value === 'string' ? props.value : (props.value as File).name}
-						</span>
+						<span style={{ fontSize: '13px', color: '#0066cc' }}>{fileName}</span>
 					) : (
 						<span style={{ fontSize: '13px', color: '#999' }}>クリックしてファイルを選択</span>
 					)}
@@ -50,6 +71,14 @@ export default function Input(props: {
 
 	if (def.type === 'text') {
 		const variant = def.variant ?? 'text';
+		if (props.readOnly) {
+			return (
+				<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+					<label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>
+					<div style={{ ...readOnlyValueStyle, whiteSpace: variant === 'area' ? 'pre-wrap' : undefined }}>{props.value || '—'}</div>
+				</div>
+			);
+		}
 		return (
 			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 				<label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>
@@ -87,6 +116,16 @@ export default function Input(props: {
 
 	if (def.type === 'number') {
 		const constraint = def.constraint as any;
+		if (props.readOnly) {
+			return (
+				<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+					<label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+						{def.label}{def.unit && <span style={{ color: '#666', fontWeight: 'normal' }}> ({def.unit})</span>}
+					</label>
+					<div style={readOnlyValueStyle}>{props.value}{def.unit ? ` ${def.unit}` : ''}</div>
+				</div>
+			);
+		}
 		if (constraint?.enum) {
 			return (
 				<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -132,6 +171,15 @@ export default function Input(props: {
 
 	if (def.type === 'select') {
 		const options = def.options ?? [];
+		if (props.readOnly) {
+			const label = options.find(o => o.value === props.value)?.label ?? props.value ?? '—';
+			return (
+				<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+					<label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>
+					<div style={readOnlyValueStyle}>{label}</div>
+				</div>
+			);
+		}
 		return (
 			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 				<label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{def.label}</label>

@@ -1,12 +1,10 @@
 import Lambda360Shape from './Lambda360Shape';
-import { createClient, createConfig } from '@/out/client/client';
-import { actionAction } from '@/out/client';
-import type { ActionRequest, Output as OutputDef } from '@/out/client';
+import type { Output as OutputDef } from '@/out/client';
 
 export default function Output(props: {
 	out: OutputDef;
 	serverUrl?: string;
-	action?: ActionRequest;
+	onAction?: () => void;
 }) {
 	if (props.out.type === 'shape') {
 		return (
@@ -26,7 +24,7 @@ export default function Output(props: {
 						? { ...a, position: [a.position[0], a.position[1], a.position[2]] as [number, number, number] }
 						: { ...a, start: [a.start[0], a.start[1], a.start[2]] as [number, number, number], end: [a.end[0], a.end[1], a.end[2]] as [number, number, number] }
 				)}
-				style={{ width: '100%', aspectRatio: '4/4', borderRadius: '8px', border: '1px solid #ddd' }}
+				style={{ width: '100%', maxHeight: '500px', aspectRatio: '4/4', borderRadius: '8px', border: '1px solid #ddd' }}
 			/>
 		);
 	}
@@ -68,11 +66,7 @@ export default function Output(props: {
 			<div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
 				<button
 					disabled={disabled}
-					onClick={() => {
-						const baseUrl = props.serverUrl ? `${props.serverUrl}/api` : '/api';
-						const customClient = createClient(createConfig({ baseUrl }));
-						actionAction({ body: props.action!, client: customClient });
-					}}
+					onClick={props.onAction}
 					style={{
 						width: '100%',
 						backgroundColor: disabled ? '#aaa' : '#0066cc',
