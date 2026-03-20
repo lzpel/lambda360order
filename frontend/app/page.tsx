@@ -23,16 +23,16 @@ export default function Home() {
 				top: 0,
 				zIndex: 100,
 			}}>
-				<a href="/" style={{ display: "flex", alignItems: "center" }}>
-					<img src="/logo.svg" alt="KatachiForm" style={{ height: 36 }} />
-				</a>
+				<Link href="/" style={{ display: "flex", alignItems: "center" }}>
+					<img src={`${process.env.NEXT_PUBLIC_PREFIX}/logo.svg`} alt="KatachiForm" style={{ height: 36 }} />
+				</Link>
 				<nav style={{ display: "flex", gap: 28, alignItems: "center" }}>
-					<a href="#features" style={{ color: "#444", textDecoration: "none", fontSize: 14 }}>特長</a>
-					<a href="#howto" style={{ color: "#444", textDecoration: "none", fontSize: 14 }}>使い方</a>
-					<a href="#examples" style={{ color: "#444", textDecoration: "none", fontSize: 14 }}>活用事例</a>
-					<a href="#pricing" style={{ color: "#444", textDecoration: "none", fontSize: 14 }}>料金</a>
-					<a href="#faq" style={{ color: "#444", textDecoration: "none", fontSize: 14 }}>FAQ</a>
-					<a href="#contact" style={{
+					<Link href="#features" style={{ color: "#444", textDecoration: "none", fontSize: 14 }}>特長</Link>
+					<Link href="#howto" style={{ color: "#444", textDecoration: "none", fontSize: 14 }}>使い方</Link>
+					<Link href="#examples" style={{ color: "#444", textDecoration: "none", fontSize: 14 }}>活用事例</Link>
+					<Link href="#pricing" style={{ color: "#444", textDecoration: "none", fontSize: 14 }}>料金</Link>
+					<Link href="#faq" style={{ color: "#444", textDecoration: "none", fontSize: 14 }}>FAQ</Link>
+					<Link href="#contact" style={{
 						backgroundColor: accent,
 						color: navy,
 						padding: "8px 20px",
@@ -40,7 +40,7 @@ export default function Home() {
 						textDecoration: "none",
 						fontSize: 14,
 						fontWeight: 700,
-					}}>お問い合わせ</a>
+					}}>お問い合わせ</Link>
 				</nav>
 			</header>
 
@@ -105,7 +105,7 @@ export default function Home() {
 					overflow: "hidden",
 					boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
 				}}>
-					<img src="/screenshot-box.png" alt="板金制御盤ボックスの3D見積もりフォーム" style={{ width: "100%", display: "block" }} />
+					<img src={`${process.env.NEXT_PUBLIC_PREFIX}/screenshot-box.png`} alt="板金制御盤ボックスの3D見積もりフォーム" style={{ width: "100%", display: "block" }} />
 				</div>
 			</section>
 
