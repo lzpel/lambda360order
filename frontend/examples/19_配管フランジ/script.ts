@@ -1,20 +1,29 @@
-import type { Input, Output } from '@/out/client';
+import type { Input, NumberInput, SelectInput, Output } from '@/out/client';
 
-export const input: Record<string, Input> = {
-    diameter: { type: "number", label: "呼び径", unit: "A", default: 50, constraint: { enum: [15, 20, 25, 32, 40, 50, 65, 80, 100] } },
-    pressure_class: { type: "number", label: "圧力クラス", unit: "MPa", default: 1.0, constraint: { enum: [1.0, 2.0, 5.0, 10.0] } },
+type InputSchema = {
+    diameter: NumberInput,
+    pressure_class: NumberInput,
+    color: SelectInput,
+}
+
+export const input: InputSchema = {
+    diameter: { type: "number", label: "呼び径", unit: "A", value: 50, constraint: { enum: [15, 20, 25, 32, 40, 50, 65, 80, 100] } } as NumberInput,
+    pressure_class: { type: "number", label: "圧力クラス", unit: "MPa", value: 1.0, constraint: { enum: [1.0, 2.0, 5.0, 10.0] } } as NumberInput,
     color: {
-        type: "select", label: "色", default: "#aaaaaa", options: [
+        type: "select", label: "色", value: "#aaaaaa", options: [
             { value: "#aaaaaa", label: "ライトグレー" },
             { value: "#888888", label: "グレー" },
         ]
-    },
+    } as SelectInput,
 };
 
-export const lambda = (input: Record<string, Input>): Output[] => [
-    { type: "shape", shape: { op: "step", content_hash: "" } },
-    { type: "message", messageType: "text", label: `価格: ¥${(500 + params.diameter * 20 + params.pressure_class * 500).toLocaleString()}` },
-];
+export const lambda = (params: Record<string, Input>): Output[] => {
+    const input = params as unknown as InputSchema;
+    return [
+        { type: "shape", shape: { op: "step", content_hash: "" } },
+        { type: "message", messageType: "text", label: `価格: ¥${(500 + input.diameter.value * 20 + input.pressure_class.value * 500).toLocaleString()}` },
+    ];
+};
 
 /*
 // 旧デモ (script.js より)

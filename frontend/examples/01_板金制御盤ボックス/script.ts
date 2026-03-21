@@ -22,7 +22,8 @@ export const input: InputSchema = {
 	email: { type: "text", label: "メールアドレス", variant: "email", placeholder: "example@example.com", value: "" } as TextInput,
 };
 
-export const lambda = (input: InputSchema): Output[] => {
+export const lambda = (params: Record<string, Input>): Output[] => {
+	const input: InputSchema = params as InputSchema;
 	const delta = [
 		input.depth.value - 430, 
 		input.height.value - 75,

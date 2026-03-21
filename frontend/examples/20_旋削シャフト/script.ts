@@ -1,27 +1,36 @@
-import type { Input, Output } from '../../out/client';
+import type { Input, NumberInput, SelectInput, Output } from '@/out/client';
 
-export const input: Record<string, Input> = {
-    diameter: { type: "number", label: "径", unit: "mm", default: 20, constraint: { min: 5, max: 100, step: 5 } },
-    length: { type: "number", label: "長さ", unit: "mm", default: 200, constraint: { min: 50, max: 1000, step: 25 } },
+type InputSchema = {
+    diameter: NumberInput,
+    length: NumberInput,
+    color: SelectInput,
+}
+
+export const input: InputSchema = {
+    diameter: { type: "number", label: "径", unit: "mm", value: 20, constraint: { min: 5, max: 100, step: 5 } } as NumberInput,
+    length: { type: "number", label: "長さ", unit: "mm", value: 200, constraint: { min: 50, max: 1000, step: 25 } } as NumberInput,
     color: {
-        type: "select", label: "色", default: "#c8c8c8", options: [
+        type: "select", label: "色", value: "#c8c8c8", options: [
             { value: "#c8c8c8", label: "シルバー" },
             { value: "#888888", label: "グレー" },
         ]
-    },
+    } as SelectInput,
 };
 
-export const lambda = (input: Record<string, Input>): Output[] => [
-    {
-        type: "shape", shape: {
-            op: "stretch",
-            shape: { op: "step", content_hash: "" },
-            cut: [0, 0, params.length * 0.5],
-            delta: [0, 0, params.length - 200],
-        }
-    },
-    { type: "message", messageType: "text", label: `価格: ¥${(1000 + params.diameter * params.diameter * params.length * 0.0005).toLocaleString()}` },
-];
+export const lambda = (params: Record<string, Input>): Output[] => {
+    const input = params as unknown as InputSchema;
+    return [
+        {
+            type: "shape", shape: {
+                op: "stretch",
+                shape: { op: "step", content_hash: "" },
+                cut: [0, 0, input.length.value * 0.5],
+                delta: [0, 0, input.length.value - 200],
+            }
+        },
+        { type: "message", messageType: "text", label: `価格: ¥${(1000 + input.diameter.value * input.diameter.value * input.length.value * 0.0005).toLocaleString()}` },
+    ];
+};
 
 /*
 // 旧デモ (script.js より)

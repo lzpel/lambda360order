@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { ComponentProps } from 'react';
 import { Lambda360View } from 'lambda360view';
 import { createClient, createConfig } from '@/out/client/client';
-import { shapeGltfBinary } from '@/out/client';
+import { shapeGltfBinary, shapeStep } from '@/out/client';
 import type { ShapeNode } from '@/out/client';
 
 export interface Lambda360ShapeProps extends Omit<ComponentProps<typeof Lambda360View>, 'model'> {
@@ -10,7 +10,22 @@ export interface Lambda360ShapeProps extends Omit<ComponentProps<typeof Lambda36
 	serverUrl?: string;
 }
 
-export default function Lambda360Shape({ shape, serverUrl = '', ...props }: Lambda360ShapeProps) {
+export default function Lambda360Shape({ shape, serverUrl = '', onDownloadStep, ...props }: Lambda360ShapeProps) {
+	const client = createClient(createConfig({ baseUrl: serverUrl ? `${serverUrl}/api` : '/api' }));
+
+	const handleDownloadStep = onDownloadStep ? () => {
+		shapeStep({ body: shape, client, parseAs: 'blob' }).then((res) => {
+			if (!res.data) return;
+			const url = URL.createObjectURL(res.data as Blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = 'model.step';
+			a.click();
+			URL.revokeObjectURL(url);
+			onDownloadStep();
+		});
+	} : undefined;
+
 	const [model, setModel] = useState<ArrayBuffer | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -25,10 +40,7 @@ export default function Lambda360Shape({ shape, serverUrl = '', ...props }: Lamb
 		setLoading(true);
 		setError(null);
 
-		const baseUrl = serverUrl ? `${serverUrl}/api` : '/api';
-		const customClient = createClient(createConfig({ baseUrl }));
-
-		shapeGltfBinary({ body: shape, client: customClient, parseAs: 'blob' })
+		shapeGltfBinary({ body: shape, client, parseAs: 'blob' })
 			.then(async (res) => {
 				if (controller.signal.aborted) return;
 				if (res.data) {
@@ -97,6 +109,7 @@ export default function Lambda360Shape({ shape, serverUrl = '', ...props }: Lamb
 		<Lambda360View
 			model={model}
 			nodeCenter={centerNode}
+			onDownloadStep={handleDownloadStep}
 			{...props}
 		/>
 	);
