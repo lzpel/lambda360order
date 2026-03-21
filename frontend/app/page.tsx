@@ -1,5 +1,6 @@
 import Link from "next/link";
 import list from "./out/list.json";
+import ContactForm from "./ContactForm";
 
 const navy = "#1a2744";
 const navyLight = "#243354";
@@ -428,67 +429,8 @@ export default function Home() {
           STEPファイルがあれば、今すぐ3D発注フォームを作成できます。<br />
           導入のご相談・デモのご依頼もお気軽にどうぞ。
         </p>
-        <div style={{
-          maxWidth: 500,
-          margin: "0 auto",
-          backgroundColor: gray,
-          borderRadius: 8,
-          padding: 40,
-        }}>
-          <div style={{ marginBottom: 16 }}>
-            <input
-              type="text"
-              placeholder="会社名"
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                border: "1px solid #ddd",
-                borderRadius: 4,
-                fontSize: 16,
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <input
-              type="email"
-              placeholder="メールアドレス"
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                border: "1px solid #ddd",
-                borderRadius: 4,
-                fontSize: 16,
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-          <div style={{ marginBottom: 24 }}>
-            <textarea
-              placeholder="お問い合わせ内容（任意）"
-              rows={4}
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                border: "1px solid #ddd",
-                borderRadius: 4,
-                fontSize: 16,
-                boxSizing: "border-box",
-                resize: "vertical",
-              }}
-            />
-          </div>
-          <button style={{
-            backgroundColor: accent,
-            color: navy,
-            border: "none",
-            padding: "14px 48px",
-            borderRadius: 4,
-            fontSize: 16,
-            fontWeight: 700,
-            cursor: "pointer",
-            width: "100%",
-          }}>送信する</button>
+        <div style={{ maxWidth: 500, margin: "0 auto" }}>
+          <ContactForm />
         </div>
       </section>
 

@@ -1,4 +1,5 @@
 mod content_hash;
+mod encode;
 #[allow(dead_code)]
 #[allow(unused_variables)]
 #[allow(unused_imports)]
@@ -7,8 +8,7 @@ mod content_hash;
 mod openapi;
 mod server;
 mod shape;
-mod shape_to_glb;
-mod step_to_brep;
+mod upload;
 use crate::openapi::{axum_router, print_axum_router};
 use crate::server::Server;
 

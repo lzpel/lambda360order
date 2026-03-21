@@ -1,7 +1,7 @@
 "use client";
 
 import Lambda360Form from '@widget/Lambda360Form';
-import type { ShapeNode } from '@/out/client';
+import type { Output, ShapeNode } from '@/out/client';
 
 export default function FormBoxPage() {
     const input = {
@@ -42,11 +42,12 @@ export default function FormBoxPage() {
             {
                 type: "action" as const,
                 label: "見積もりを送信",
+                subject: "板金加工の見積もりが発行されました",
                 email_to: ["citygirlstat00@gmail.com"],
                 email_bcc: [],
                 slack: ["#orders"],
             },
-        ];
+        ] as Output[];
     };
 
     return (

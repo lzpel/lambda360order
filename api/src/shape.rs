@@ -1,11 +1,11 @@
 use crate::openapi::*;
-use crate::shape_to_glb::create_glb;
 use chijin::{Shape, utils::stretch_vector};
 use glam::DVec3;
 use ngoni;
 
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::io::Cursor;
 
 /// NumberOrExpr::Variant0(f64) を f64 に変換する。Variant1(String) は未サポート。
 fn resolve_number(expr: &NumberOrExpr) -> Result<f64, String> {
@@ -27,14 +27,30 @@ fn resolve_vec3(v: &[NumberOrExpr]) -> Result<[f64; 3], String> {
 	])
 }
 
+/// ShapeNodeからキャッシュのキーとなるSHA256ハッシュを計算する。
+fn compute_shape_hash(node: &ShapeNode) -> Result<String, String> {
+	let json_str = serde_json_canonicalizer::to_string(node).map_err(|e| e.to_string())?;
+	let mut h = Sha256::new();
+	h.update(json_str.as_bytes());
+	Ok(format!("{:x}", h.finalize()))
+}
+
+/// bucket_tempのキャッシュからShapeを取得する。ヒットすればSome(Shape)、ミスはNone。
+async fn shape_cached(node: &ShapeNode, bucket_temp: &ngoni::s3::S3Storage) -> Option<Shape> {
+	let hash = compute_shape_hash(node).ok()?;
+	let (_meta, data) = bucket_temp.read(&hash).await.ok()?;
+	Shape::read_brep_color(&mut Cursor::new(&data))
+		.or_else(|_| Shape::read_brep_bin(&mut Cursor::new(&data)))
+		.or_else(|_| Shape::read_brep_text(&mut Cursor::new(&data)))
+		.ok()
+}
+
 /// ShapeNodeのstep命令を再帰的に収集し、必要なbrepファイルをHashMapにまとめる。
-/// StepNode.pathはフロントエンドがSTEPファイルのsha256に置換済み。
-/// bucket_memoに `{sha256}` （拡張子なし）が存在しなければエラーを返す（アップロード/変換未完了）。
 ///
 /// Phase 1: ShapeNodeを再帰的に走査してsha256キーをHashSetに収集（同期）
 /// Phase 2: HashSetのキーを元にbucket_mainから並列ダウンロード
 /// Phase 3: spawn_blockingで並列にBREPを読み込みHashMap<String, Shape>に格納
-pub async fn collect_shape(
+async fn collect_shape(
 	node: &ShapeNode,
 	bucket_main: &ngoni::s3::S3Storage,
 ) -> Result<HashMap<String, Shape>, String> {
@@ -55,14 +71,14 @@ pub async fn collect_shape(
 	});
 	let pairs = futures_util::future::try_join_all(futures).await?;
 
-	// Phase 3: spawn_blocking で並列 BRep 読み込み（chijin 0.1.1 で Shape: Send）
+	// Phase 3: spawn_blocking で並列 BRep 読み込み
 	let handles: Vec<_> = pairs
 		.into_iter()
 		.map(|(sha256, data)| {
 			tokio::task::spawn_blocking(move || {
-				let shape = Shape::read_brep_color(&mut std::io::Cursor::new(&data))
-					.or_else(|_| Shape::read_brep_bin(&mut std::io::Cursor::new(&data)))
-					.or_else(|_| Shape::read_brep_text(&mut std::io::Cursor::new(&data)))
+				let shape = Shape::read_brep_color(&mut Cursor::new(&data))
+					.or_else(|_| Shape::read_brep_bin(&mut Cursor::new(&data)))
+					.or_else(|_| Shape::read_brep_text(&mut Cursor::new(&data)))
 					.map_err(|e| format!("Failed to read brep '{}': {:?}", sha256, e))?;
 				Ok::<_, String>((sha256, shape))
 			})
@@ -113,96 +129,46 @@ fn collect_keys(node: &ShapeNode, keys: &mut std::collections::HashSet<String>) 
 	}
 }
 
-/// ShapeNodeを再帰的に走査してStepNodeのdescriptionをNoneに設定する（同期）
-/// cached_shape()でdescriptionをキャッシュキーに含めないために使用する
-fn strip_descriptions(node: &mut ShapeNode) {
-	match node {
-		ShapeNode::Step(step) => {
-			step.description = None;
-		}
-		ShapeNode::Union(n) => {
-			for s in &mut n.shapes {
-				strip_descriptions(s);
-			}
-		}
-		ShapeNode::Intersect(n) => {
-			strip_descriptions(&mut n.a);
-			strip_descriptions(&mut n.b);
-		}
-		ShapeNode::Subtract(n) => {
-			strip_descriptions(&mut n.a);
-			strip_descriptions(&mut n.b);
-		}
-		ShapeNode::Scale(n) => {
-			strip_descriptions(&mut n.shape);
-		}
-		ShapeNode::Translate(n) => {
-			strip_descriptions(&mut n.shape);
-		}
-		ShapeNode::Rotate(n) => {
-			strip_descriptions(&mut n.shape);
-		}
-		ShapeNode::Stretch(n) => {
-			strip_descriptions(&mut n.shape);
-		}
-	}
-}
-
-/// ShapeNodeからキャッシュのキーとなるSHA256ハッシュを計算する
-fn compute_shape_hash(node: &ShapeNode) -> Result<String, String> {
-	let mut node_for_hash = node.clone();
-	strip_descriptions(&mut node_for_hash);
-	let json_str =
-		serde_json_canonicalizer::to_string(&node_for_hash).map_err(|e| e.to_string())?;
-	let mut h = Sha256::new();
-	h.update(json_str.as_bytes());
-	Ok(format!("{:x}", h.finalize()))
-}
-
-/// ShapeNodeのJSONをsha256にしてbucket_memoをチェックし、キャッシュヒットならGLBを返す。
-/// キャッシュミスの場合はshape()でGLBを計算して保存してから返す。
-/// shapes は eval_shape で消費される（cache miss 時のみ）。
-pub async fn cached_shape(
+/// ShapeNodeを評価してShapeを返す。
+/// キャッシュヒット時はbucket_tempから取得、ミス時はcollect_shape+eval_shapeで計算して保存。
+pub async fn resolve_shape(
 	node: &ShapeNode,
-	shapes: HashMap<String, Shape>,
+	bucket_main: &ngoni::s3::S3Storage,
 	bucket_temp: &ngoni::s3::S3Storage,
-) -> Result<Vec<u8>, String> {
-	let glb_key = compute_shape_hash(node)?;
-
-	// キャッシュヒットチェック（bucket_temp）
-	// TODO: 現在は検証のためキャッシュ取得をバイパスし、常に再計算する
-	/*
-	if let Ok((_meta, data)) = bucket_temp.read(&glb_key).await {
-		return Ok(data);
+) -> Result<Shape, String> {
+	if let Some(s) = shape_cached(node, bucket_temp).await {
+		return Ok(s);
 	}
-	*/
 
-	// キャッシュミス: shape()でGLBを計算してbucket_tempに保存
-	let glb = shape(node, shapes)?;
+	let shapes = collect_shape(node, bucket_main).await?;
+	let shape = eval_shape(node, &mut { shapes })?;
+
+	// 結果をbucket_tempにキャッシュ（write_brep_color: 色メタデータ付きBRep）
+	let hash = compute_shape_hash(node)?;
+	let mut brep_buf = Vec::new();
+	shape
+		.write_brep_color(&mut brep_buf)
+		.map_err(|e| format!("Failed to write BRep: {:?}", e))?;
 	bucket_temp
 		.write(
-			&glb_key,
-			glb.clone(),
-			Some("model/gltf-binary".to_string()),
+			&hash,
+			brep_buf,
+			Some("application/octet-stream".to_string()),
 			None,
 			None,
 		)
 		.await
-		.map_err(|e| format!("Failed to write GLB to bucket_temp: {}", e))?;
+		.map_err(|e| format!("Failed to cache shape: {}", e))?;
 
-	Ok(glb)
+	Ok(shape)
 }
 
-/// ShapeNodeからOCC Shapeを再帰的に構築し、GLBバイト列を返す。
-pub(crate) fn shape(node: &ShapeNode, shapes: HashMap<String, Shape>) -> Result<Vec<u8>, String> {
-	let mut shapes = shapes;
-	let occ_shape = eval_shape(node, &mut shapes)?;
-	create_glb(&occ_shape)
-}
-
-/// ShapeNodeを再帰的に評価してOCC Shapeを返す。
+/// ShapeNodeを再帰的に評価してShapeを返す。
 /// shapes から StepNode の Shape を取り出す（remove）ため &mut を要求する。
-fn eval_shape(node: &ShapeNode, shapes: &mut HashMap<String, Shape>) -> Result<Shape, String> {
+pub(crate) fn eval_shape(
+	node: &ShapeNode,
+	shapes: &mut HashMap<String, Shape>,
+) -> Result<Shape, String> {
 	match node {
 		ShapeNode::Step(step) => {
 			let sha256 = &step.content_hash;
@@ -254,5 +220,55 @@ fn eval_shape(node: &ShapeNode, shapes: &mut HashMap<String, Shape>) -> Result<S
 			after_z.clean().map_err(|e| e.to_string())
 		}
 		_ => Err("Only StepNode and StretchNode are currently supported".to_string()),
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::eval_shape;
+	use crate::openapi::*;
+	use chijin::Shape;
+	use std::collections::HashMap;
+
+	const TEST_BREP_PATH: &str = "examples/colored_box.brep";
+	const TEST_KEY: &str = "test_brep_sha256";
+
+	fn load_test_shape() -> Shape {
+		let data = std::fs::read(TEST_BREP_PATH).expect(
+			"テスト用BRepファイルが見つかりません。先に #[ignore] generate_brep を実行してください",
+		);
+		Shape::read_brep_color(&mut std::io::Cursor::new(&data))
+			.or_else(|_| Shape::read_brep_bin(&mut std::io::Cursor::new(&data)))
+			.or_else(|_| Shape::read_brep_text(&mut std::io::Cursor::new(&data)))
+			.expect("テスト用BRepファイルが読み込めません")
+	}
+
+	fn shapes_map(key: &str) -> HashMap<String, Shape> {
+		let mut m = HashMap::new();
+		m.insert(key.to_string(), load_test_shape());
+		m
+	}
+
+	fn step_node(key: &str) -> ShapeNode {
+		ShapeNode::Step(StepNode {
+			content_hash: key.to_string(),
+		})
+	}
+
+	#[test]
+	fn shape_step_node_returns_shape() {
+		let result = eval_shape(&step_node(TEST_KEY), &mut shapes_map(TEST_KEY));
+		assert!(
+			result.is_ok(),
+			"eval_shape() がエラーを返しました: {:?}",
+			result.err()
+		);
+	}
+
+	#[test]
+	fn shape_missing_brep_returns_err() {
+		let result = eval_shape(&step_node("nonexistent"), &mut HashMap::new());
+		assert!(result.is_err());
+		assert!(result.err().unwrap().contains("not found"));
 	}
 }

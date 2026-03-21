@@ -1,6 +1,7 @@
+use crate::encode::{gltf_binary, shape_to_step};
 use crate::openapi::*;
-use crate::shape::{cached_shape, collect_shape};
-use crate::step_to_brep::step_pipeline;
+use crate::shape::resolve_shape;
+use crate::upload::step_pipeline;
 use ngoni;
 
 pub struct Server {
@@ -32,7 +33,11 @@ impl ApiInterface for Server {
 		println!("=== /action ===\n{}", pretty);
 
 		let from = std::env::var("MAIL_FROM").unwrap_or("form@surfic.com".to_string());
-		let subject = &body.action.label;
+		let subject = if body.action.subject.is_empty() {
+			&body.action.label
+		} else {
+			&body.action.subject
+		};
 		let mut errors: Vec<String> = vec![];
 
 		for to in &body.action.email_to {
@@ -155,32 +160,25 @@ impl ApiInterface for Server {
 		}
 	}
 
-	async fn shape_compute(&self, req: ShapeComputeRequest) -> ShapeComputeResponse {
-		let node = req.body;
+	async fn shape_step(&self, req: ShapeStepRequest) -> ShapeStepResponse {
+		let result = resolve_shape(&req.body, &self.bucket_main, &self.bucket_temp)
+			.await
+			.and_then(|shape| shape_to_step(&shape));
 
-		// StepNode.pathはフロントエンドがsha256に置換済み。
-		// そのsha256をキーにbucket_mainからbrepを収集してShapeに変換する。
-		let shapes = match collect_shape(&node, &self.bucket_main).await {
-			Ok(s) => s,
-			Err(e) => {
-				return ShapeComputeResponse::Raw(
-					axum::response::Response::builder()
-						.status(axum::http::StatusCode::UNPROCESSABLE_ENTITY)
-						.body(axum::body::Body::from(e))
-						.unwrap(),
-				);
-			}
-		};
+		match result {
+			Ok(data) => ShapeStepResponse::Status200(data),
+			Err(e) => ShapeStepResponse::Status500(e),
+		}
+	}
 
-		// ShapeNodeのJSONをsha256にしてキャッシュ確認 → なければshape()で計算して保存
-		match cached_shape(&node, shapes, &self.bucket_temp).await {
-			Ok(glb) => ShapeComputeResponse::Status200(glb),
-			Err(e) => ShapeComputeResponse::Raw(
-				axum::response::Response::builder()
-					.status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-					.body(axum::body::Body::from(e))
-					.unwrap(),
-			),
+	async fn shape_gltf_binary(&self, req: ShapeGltfBinaryRequest) -> ShapeGltfBinaryResponse {
+		let result = resolve_shape(&req.body, &self.bucket_main, &self.bucket_temp)
+			.await
+			.and_then(|shape| gltf_binary(&shape));
+
+		match result {
+			Ok(glb) => ShapeGltfBinaryResponse::Status200(glb),
+			Err(e) => ShapeGltfBinaryResponse::Status500(e),
 		}
 	}
 }

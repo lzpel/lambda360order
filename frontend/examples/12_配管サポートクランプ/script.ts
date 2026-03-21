@@ -1,21 +1,25 @@
 import type { Input, Output } from '@/out/client';
 
-export const params: Record<string, Input> = {
+export const input: Record<string, Input> = {
     pipe_diameter: { type: "number", label: "管外径", unit: "mm", default: 60.5, constraint: { enum: [27.2, 34.0, 42.7, 48.6, 60.5, 76.3, 101.6] } },
-    width:         { type: "number", label: "幅",     unit: "mm", default: 80, constraint: { min: 40, max: 200, step: 20 } },
-    color:         { type: "select", label: "色", default: "#888888", options: [
-        { value: "#888888", label: "グレー" },
-        { value: "#cc4400", label: "オレンジ" },
-    ] },
+    width: { type: "number", label: "幅", unit: "mm", default: 80, constraint: { min: 40, max: 200, step: 20 } },
+    color: {
+        type: "select", label: "色", default: "#888888", options: [
+            { value: "#888888", label: "グレー" },
+            { value: "#cc4400", label: "オレンジ" },
+        ]
+    },
 };
 
-export const lambda = (params: Record<string, any>): Output[] => [
-    { type: "shape", shape: {
-        op: "stretch",
-        shape: { op: "step", content_hash: "" },
-        cut: [params.width * 0.5, 0, 0],
-        delta: [params.width - 80, 0, 0],
-    }},
+export const lambda = (input: Record<string, Input>): Output[] => [
+    {
+        type: "shape", shape: {
+            op: "stretch",
+            shape: { op: "step", content_hash: "" },
+            cut: [params.width * 0.5, 0, 0],
+            delta: [params.width - 80, 0, 0],
+        }
+    },
     { type: "message", messageType: "text", label: `価格: ¥${(400 + params.pipe_diameter * 15 + params.width * 5).toLocaleString()}` },
 ];
 

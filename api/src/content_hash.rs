@@ -9,9 +9,9 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn hash_pa001() {
-		let data = std::fs::read("../public/PA-001-DF7.STEP")
-			.expect("STEPファイルが見つかりません: ../public/PA-001-DF7.STEP");
-		println!("PA-001-DF7.STEP: {}", content_hash(&data));
+	fn hash_colored_box() {
+		let data = std::fs::read("examples/colored_box.step")
+			.expect("STEPファイルが見つかりません: examples/colored_box.step");
+		println!("colored_box.step: {}", content_hash(&data));
 	}
 }

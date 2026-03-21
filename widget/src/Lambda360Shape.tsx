@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { ComponentProps } from 'react';
 import { Lambda360View } from 'lambda360view';
 import { createClient, createConfig } from '@/out/client/client';
-import { shapeCompute } from '@/out/client';
+import { shapeGltfBinary } from '@/out/client';
 import type { ShapeNode } from '@/out/client';
 
 export interface Lambda360ShapeProps extends Omit<ComponentProps<typeof Lambda360View>, 'model'> {
@@ -28,7 +28,7 @@ export default function Lambda360Shape({ shape, serverUrl = '', ...props }: Lamb
 		const baseUrl = serverUrl ? `${serverUrl}/api` : '/api';
 		const customClient = createClient(createConfig({ baseUrl }));
 
-		shapeCompute({ body: shape, client: customClient, parseAs: 'blob' })
+		shapeGltfBinary({ body: shape, client: customClient, parseAs: 'blob' })
 			.then(async (res) => {
 				if (controller.signal.aborted) return;
 				if (res.data) {

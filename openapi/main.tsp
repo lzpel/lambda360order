@@ -126,8 +126,6 @@ model StepNode extends ShapeNodeBase {
 	`op`: "step";
 	/** STEPファイルのsha256ハッシュ値 (hex64) */
 	content_hash: string;
-	/** 表示用メモ（GLBキャッシュキーに影響しない） */
-	description?: string;
 }
 
 /** ブーリアン合体 (BRepAlgoAPI_Fuse) */
@@ -217,6 +215,7 @@ model TextInput {
 	variant?: "text" | "area" | "email";
 	placeholder?: string;
 	`default`?: string;
+	value: string;
 }
 
 model NumberConstraintRange {
@@ -235,6 +234,7 @@ model NumberInput {
 	unit?: string;
 	`default`?: float64;
 	constraint?: NumberConstraintRange | NumberConstraintEnum;
+	value: float64;
 }
 
 model SelectOption {
@@ -249,6 +249,7 @@ model SelectInput {
 	options: SelectOption[];
 	/** trueにすると選択肢を横並びにする（デフォルト: 縦並び） */
 	horizontal?: boolean;
+	value: string;
 }
 
 union Input {
@@ -311,6 +312,7 @@ model MessageOutput {
 model ActionOutput {
 	type: "action";
 	label: string;
+	subject: string;
 	/** false=有効, true=無効, 文字列=無効理由 (例: "幅が大きすぎます") */
 	disable?: boolean | string;
 	email_to: string[];
@@ -333,10 +335,16 @@ union Output {
 namespace Shape {
 	/** ShapeNode を受け取り、演算結果を GLB (GLTF Binary) として返す */
 	@post
-	op compute(@body shape: ShapeNode): {
+	op gltf_binary(@body shape: ShapeNode): {
 		@header contentType: "model/gltf-binary";
 		@body body: bytes;
-	};
+	} | ErrorResponse;
+	@route("/step")
+	@post
+	op step(@body shape: ShapeNode): {
+		@header contentType: "model/step";
+		@body body: bytes;
+	} | ErrorResponse;
 }
 
 // ---------------------------------------------------------------------------
@@ -346,8 +354,6 @@ namespace Shape {
 model ActionRequest {
 	/** Input の定義辞書（キーはフォームのフィールド名） */
 	input: Record<Input>;
-	/** フィールド名 → 入力値（文字列または数値）の辞書 */
-	value: Record<string | float64>;
 	/** ボタン押下時点で lambda が返した出力（メール本文の生成に使う） */
 	output: Output[];
 	action: ActionOutput;

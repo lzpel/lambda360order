@@ -1,22 +1,26 @@
 import type { Input, Output } from '@/out/client';
 
-export const params: Record<string, Input> = {
-    width: { type: "number", label: "幅",    unit: "mm", default: 1500, constraint: { min: 800, max: 2400, step: 100 } },
-    reach: { type: "number", label: "リーチ", unit: "mm", default: 600,  constraint: { min: 300, max: 1200, step: 100 } },
-    color: { type: "select", label: "色", default: "#ff8800", options: [
-        { value: "#ff8800", label: "オレンジ" },
-        { value: "#228800", label: "グリーン" },
-        { value: "#cc2200", label: "レッド" },
-    ] },
+export const input: Record<string, Input> = {
+    width: { type: "number", label: "幅", unit: "mm", default: 1500, constraint: { min: 800, max: 2400, step: 100 } },
+    reach: { type: "number", label: "リーチ", unit: "mm", default: 600, constraint: { min: 300, max: 1200, step: 100 } },
+    color: {
+        type: "select", label: "色", default: "#ff8800", options: [
+            { value: "#ff8800", label: "オレンジ" },
+            { value: "#228800", label: "グリーン" },
+            { value: "#cc2200", label: "レッド" },
+        ]
+    },
 };
 
-export const lambda = (params: Record<string, any>): Output[] => [
-    { type: "shape", shape: {
-        op: "stretch",
-        shape: { op: "step", content_hash: "" },
-        cut: [params.width * 0.5, params.reach * 0.5, 0],
-        delta: [params.width - 1500, params.reach - 600, 0],
-    }},
+export const lambda = (input: Record<string, Input>): Output[] => [
+    {
+        type: "shape", shape: {
+            op: "stretch",
+            shape: { op: "step", content_hash: "" },
+            cut: [params.width * 0.5, params.reach * 0.5, 0],
+            delta: [params.width - 1500, params.reach - 600, 0],
+        }
+    },
     { type: "message", messageType: "text", label: `価格: ¥${(50000 + params.width * 30 + params.reach * 20).toLocaleString()}` },
 ];
 

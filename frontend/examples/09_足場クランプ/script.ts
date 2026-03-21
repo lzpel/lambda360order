@@ -1,15 +1,17 @@
 import type { Input, Output } from '@/out/client';
 
-export const params: Record<string, Input> = {
+export const input: Record<string, Input> = {
     diameter: { type: "number", label: "対応管径", unit: "mm", default: 48.6, constraint: { enum: [34.0, 42.7, 48.6, 60.5] } },
-    color:    { type: "select", label: "色", default: "#cc4400", options: [
-        { value: "#cc4400", label: "オレンジ" },
-        { value: "#888888", label: "グレー" },
-        { value: "#ffcc00", label: "イエロー" },
-    ] },
+    color: {
+        type: "select", label: "色", default: "#cc4400", options: [
+            { value: "#cc4400", label: "オレンジ" },
+            { value: "#888888", label: "グレー" },
+            { value: "#ffcc00", label: "イエロー" },
+        ]
+    },
 };
 
-export const lambda = (params: Record<string, any>): Output[] => [
+export const lambda = (input: Record<string, Input>): Output[] => [
     { type: "shape", shape: { op: "step", content_hash: "" } },
     { type: "message", messageType: "text", label: `価格: ¥${(600 + params.diameter * 10).toLocaleString()}` },
 ];

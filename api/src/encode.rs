@@ -2,10 +2,19 @@ use chijin::Shape;
 use gltf_json as json;
 use std::io::Write;
 
+/// ShapeをSTEPバイト列に変換する。
+pub fn shape_to_step(shape: &Shape) -> Result<Vec<u8>, String> {
+	let mut buf = Vec::new();
+	shape
+		.write_step_with_colors(&mut buf)
+		.map_err(|e| format!("STEP書き込み失敗: {:?}", e))?;
+	Ok(buf)
+}
+
 /// GLB (GLTF Binary) を生成する。
 /// shape.colormap が空の場合はグレー単色プリミティブ、
 /// 色情報がある場合は色グループ別プリミティブを生成する。
-pub fn create_glb(shape: &Shape) -> Result<Vec<u8>, String> {
+pub fn gltf_binary(shape: &Shape) -> Result<Vec<u8>, String> {
 	let mesh = shape
 		.mesh_with_tolerance(0.1)
 		.map_err(|e| format!("mesh_with_tolerance failed: {:?}", e))?;
@@ -298,22 +307,24 @@ fn build_glb(
 
 #[cfg(test)]
 mod tests {
+	use super::gltf_binary;
 	use crate::openapi::*;
-	use crate::shape::shape;
+	use crate::shape::eval_shape;
 	use chijin::Shape;
-
 	use std::collections::HashMap;
 
-	const TEST_BREP_PATH: &str = "../public/PA-001-DF7.brep";
+	const TEST_STEP_PATH: &str = "examples/colored_box.step";
+	const TEST_BREP_PATH: &str = "examples/colored_box.brep";
 	const TEST_KEY: &str = "test_brep_sha256";
 
 	fn load_test_shape() -> Shape {
-		let data = std::fs::read(TEST_BREP_PATH)
-			.expect("テスト用BRepファイルが見つかりません: ../public/PA-001-DF7.brep");
+		let data = std::fs::read(TEST_BREP_PATH).expect(
+			"テスト用BRepファイルが見つかりません。先に #[ignore] generate_brep を実行してください",
+		);
 		Shape::read_brep_color(&mut std::io::Cursor::new(&data))
 			.or_else(|_| Shape::read_brep_bin(&mut std::io::Cursor::new(&data)))
 			.or_else(|_| Shape::read_brep_text(&mut std::io::Cursor::new(&data)))
-			.expect("テスト用BRepファイルが読み込めません: ../public/PA-001-DF7.brep")
+			.expect("テスト用BRepファイルが読み込めません")
 	}
 
 	fn shapes_map(key: &str) -> HashMap<String, Shape> {
@@ -325,48 +336,35 @@ mod tests {
 	fn step_node(key: &str) -> ShapeNode {
 		ShapeNode::Step(StepNode {
 			content_hash: key.to_string(),
-			description: None,
 		})
 	}
 
+	/// examples/colored_box.step → examples/colored_box.brep を生成する。
+	/// 他のテストが依存するので最初に一度実行する:
+	///   cargo test -p api generate_brep -- --include-ignored
 	#[test]
-	fn shape_step_node_returns_glb() {
-		let result = shape(&step_node(TEST_KEY), shapes_map(TEST_KEY));
-		assert!(
-			result.is_ok(),
-			"shape() がエラーを返しました: {:?}",
-			result.err()
-		);
-		let glb = result.unwrap();
-		assert!(!glb.is_empty());
-		assert_eq!(&glb[0..4], b"glTF");
-		assert_eq!(u32::from_le_bytes(glb[4..8].try_into().unwrap()), 2);
-	}
-
-	#[test]
-	fn shape_missing_brep_returns_err() {
-		let result = shape(&step_node("nonexistent"), HashMap::new());
-		assert!(result.is_err());
-		assert!(result.unwrap_err().contains("not found"));
+	#[ignore]
+	fn generate_brep() {
+		let step_data = std::fs::read(TEST_STEP_PATH)
+			.expect("STEPファイルが見つかりません: examples/colored_box.step");
+		let shape = Shape::read_step_with_colors(&mut std::io::Cursor::new(step_data))
+			.expect("STEP読み込みに失敗しました");
+		let mut brep_buf = Vec::new();
+		shape
+			.write_brep_color(&mut brep_buf)
+			.expect("BRep書き込みに失敗しました");
+		std::fs::write(TEST_BREP_PATH, &brep_buf).expect("BRepファイルの書き込みに失敗しました");
+		println!("生成完了: {} ({} bytes)", TEST_BREP_PATH, brep_buf.len());
 	}
 
 	#[test]
 	#[ignore]
 	fn generate_glb() {
-		let glb =
-			shape(&step_node(TEST_KEY), shapes_map(TEST_KEY)).expect("GLBの生成に失敗しました");
-		std::fs::write("../public/PA-001-DF7.glb", &glb)
+		let shape = eval_shape(&step_node(TEST_KEY), &mut shapes_map(TEST_KEY))
+			.expect("eval_shape() に失敗しました");
+		let glb = gltf_binary(&shape).expect("GLBの生成に失敗しました");
+		std::fs::write("examples/colored_box.glb", &glb)
 			.expect("GLBファイルの書き込みに失敗しました");
-		println!("生成完了: ../public/PA-001-DF7.glb ({} bytes)", glb.len());
-	}
-
-	#[test]
-	fn shape_union_missing_data_returns_err() {
-		let node = ShapeNode::Union(UnionShapeNode {
-			shapes: vec![step_node("a"), step_node("b")],
-		});
-		let result = shape(&node, HashMap::new());
-		assert!(result.is_err());
-		assert!(result.unwrap_err().contains("not found in collected map"));
+		println!("生成完了: examples/colored_box.glb ({} bytes)", glb.len());
 	}
 }

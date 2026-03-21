@@ -1,22 +1,26 @@
 import type { Input, Output } from '@/out/client';
 
-export const params: Record<string, Input> = {
-    width:  { type: "number", label: "幅",  unit: "mm", default: 900,  constraint: { min: 600, max: 1800, step: 100 } },
+export const input: Record<string, Input> = {
+    width: { type: "number", label: "幅", unit: "mm", default: 900, constraint: { min: 600, max: 1800, step: 100 } },
     height: { type: "number", label: "高さ", unit: "mm", default: 1800, constraint: { min: 900, max: 2400, step: 100 } },
-    color:  { type: "select", label: "色", default: "#c0c0c0", options: [
-        { value: "#c0c0c0", label: "シルバー" },
-        { value: "#e8e8e8", label: "ホワイト" },
-        { value: "#4a4a4a", label: "ダークグレー" },
-    ] },
+    color: {
+        type: "select", label: "色", default: "#c0c0c0", options: [
+            { value: "#c0c0c0", label: "シルバー" },
+            { value: "#e8e8e8", label: "ホワイト" },
+            { value: "#4a4a4a", label: "ダークグレー" },
+        ]
+    },
 };
 
-export const lambda = (params: Record<string, any>): Output[] => [
-    { type: "shape", shape: {
-        op: "stretch",
-        shape: { op: "step", content_hash: "" },
-        cut: [params.width * 0.5, 0, params.height * 0.5],
-        delta: [params.width - 900, 0, params.height - 1800],
-    }},
+export const lambda = (input: Record<string, Input>): Output[] => [
+    {
+        type: "shape", shape: {
+            op: "stretch",
+            shape: { op: "step", content_hash: "" },
+            cut: [params.width * 0.5, 0, params.height * 0.5],
+            delta: [params.width - 900, 0, params.height - 1800],
+        }
+    },
     { type: "message", messageType: "text", label: `価格: ¥${(3000 + params.width * 5 + params.height * 3).toLocaleString()}` },
 ];
 

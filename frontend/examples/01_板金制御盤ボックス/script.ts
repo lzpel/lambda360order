@@ -1,21 +1,33 @@
-import type { Input, Output } from '@/out/client';
+import type { Input, NumberInput, SelectInput, TextInput, Output } from '@/out/client';
 
-export const params: Record<string, Input> = {
-	width: { type: "number", label: "幅", unit: "mm", default: 310, constraint: { min: 310, max: 600, step: 10 } },
-	depth: { type: "number", label: "奥行き", unit: "mm", default: 430, constraint: { min: 430, max: 800, step: 10 } },
-	height: { type: "number", label: "高さ", unit: "mm", default: 150, constraint: { enum: [100, 150, 200, 2000] } },
+type InputSchema = {
+	width: NumberInput,
+	depth: NumberInput,
+	height: NumberInput,
+	color: SelectInput,
+	email: TextInput,
+}
+
+export const input: InputSchema = {
+	width: { type: "number", label: "幅", unit: "mm", value: 310, constraint: { min: 310, max: 600, step: 10 } } as NumberInput,
+	depth: { type: "number", label: "奥行き", unit: "mm", value: 430, constraint: { min: 430, max: 800, step: 10 } } as NumberInput,
+	height: { type: "number", label: "高さ", unit: "mm", value: 150, constraint: { enum: [100, 150, 200, 2000] } } as NumberInput,
 	color: {
-		type: "select", label: "色", default: "#cccccc", options: [
+		type: "select", label: "色", value: "#cccccc", options: [
 			{ value: "#cccccc", label: "シルバー" },
 			{ value: "#336699", label: "ネイビー" },
 			{ value: "#993333", label: "ワインレッド" },
 		]
-	},
-	email: { type: "text", label: "メールアドレス", variant: "email", placeholder: "example@example.com" },
+	} as SelectInput,
+	email: { type: "text", label: "メールアドレス", variant: "email", placeholder: "example@example.com", value: "" } as TextInput,
 };
 
-export const lambda = (params: Record<string, any>): Output[] => {
-	const delta = [params.depth - 430, params.height - 75, params.width - 302.2];
+export const lambda = (input: InputSchema): Output[] => {
+	const delta = [
+		input.depth.value - 430, 
+		input.height.value - 75,
+		input.width.value - 302.2
+	];
 	return [
 		{
 			type: "shape",
@@ -30,28 +42,33 @@ export const lambda = (params: Record<string, any>): Output[] => {
 			annotations: [
 				{
 					type: "distance",
-					start: [-params.depth / 4, params.height, 0],
-					end: [-params.depth / 4, params.height, -params.width],
-					label: `幅 ${params.width}mm`,
+					start: [-input.depth.value / 4, input.height.value, 0],
+					end: [-input.depth.value / 4, input.height.value, -input.width.value],
+					label: `幅 ${input.width.value}mm`,
 				},
 				{
 					type: "distance",
-					start: [0, params.height, params.width / 4],
-					end: [params.depth, params.height, params.width / 4],
-					label: `奥行き ${params.depth}mm`,
+					start: [0, input.height.value, input.width.value / 4],
+					end: [input.depth.value, input.height.value, input.width.value / 4],
+					label: `奥行き ${input.depth.value}mm`,
 				},
 				{
 					type: "distance",
-					start: [-params.depth / 4, 0, params.width / 4],
-					end: [-params.depth / 4, params.height, params.width / 4],
-					label: `高さ ${params.height}mm`,
+					start: [-input.depth.value / 4, 0, input.width.value / 4],
+					end: [-input.depth.value / 4, input.height.value, input.width.value / 4],
+					label: `高さ ${input.height.value}mm`,
 				},
 			],
 		},
-		{ type: "message", messageType: "text", label: `価格: ¥${(5000 + params.width * 10).toLocaleString()}` },
+		{ type: "message", messageType: "text", label: `価格: ¥${(5000 + input.width.value * 10).toLocaleString()}` },
 		{
-			type: "action", label: "見積もりを送信", email_to: [params.email], email_bcc: [], slack: [],
-			disable: params.email ? false : "メールアドレスを入力してください"
+			type: "action", 
+			subject: "01_板金制御盤ボックス 見積もり送信",
+			label: "見積もりを送信", 
+			email_to: [input.email.value],
+			email_bcc: [],
+			slack: [],
+			disable: input.email.value ? false : "メールアドレスを入力してください"
 		},
 	];
 }

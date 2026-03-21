@@ -1,15 +1,17 @@
 import type { Input, Output } from '@/out/client';
 
-export const params: Record<string, Input> = {
+export const input: Record<string, Input> = {
     hole_spacing: { type: "number", label: "穴ピッチ", unit: "mm", default: 25, constraint: { enum: [25, 50] } },
-    thickness:    { type: "number", label: "厚さ",     unit: "mm", default: 10, constraint: { enum: [5, 10, 15, 20] } },
-    color:        { type: "select", label: "色", default: "#d4d4d4", options: [
-        { value: "#d4d4d4", label: "シルバー" },
-        { value: "#222222", label: "ブラック" },
-    ] },
+    thickness: { type: "number", label: "厚さ", unit: "mm", default: 10, constraint: { enum: [5, 10, 15, 20] } },
+    color: {
+        type: "select", label: "色", default: "#d4d4d4", options: [
+            { value: "#d4d4d4", label: "シルバー" },
+            { value: "#222222", label: "ブラック" },
+        ]
+    },
 };
 
-export const lambda = (params: Record<string, any>): Output[] => [
+export const lambda = (input: Record<string, Input>): Output[] => [
     { type: "shape", shape: { op: "step", content_hash: "" } },
     { type: "message", messageType: "text", label: `価格: ¥${(2000 + params.thickness * 200).toLocaleString()}` },
 ];

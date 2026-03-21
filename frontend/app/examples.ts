@@ -34,7 +34,7 @@ writeFileSync(path.join(outDir, "list.json"), JSON.stringify(list, null, 2));
 
 const pageTemplate = `\
 "use client";
-import { params, lambda } from '@/examples/{{ name }}/script';
+import { input, lambda } from '@/examples/{{ name }}/script';
 import Lambda360Form from '@widget/Lambda360Form';
 
 const nameDirectory = "{{ nameDirectory }}";
@@ -44,7 +44,7 @@ export default function Page() {
   return (
     <>
       <h1>{name}</h1>
-      <Lambda360Form input={params} lambda={lambda} serverUrl={process.env.SERVER_URL}/>
+      <Lambda360Form input={input} lambda={lambda} serverUrl={process.env.SERVER_URL}/>
     </>
   );
 }
