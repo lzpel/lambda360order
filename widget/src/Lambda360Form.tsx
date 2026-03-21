@@ -23,17 +23,7 @@ export default function Lambda360Form({
     sideWidth = 200,
     side = 'right'
 }: Lambda360FormProps) {
-    const [values, setValues] = useState<Record<string, any>>(() => {
-        const initial: Record<string, any> = {};
-        for (const [key, def] of Object.entries(inputSchema || {})) {
-            if (def.type === 'number' || def.type === 'text' || def.type === 'select') {
-                initial[key] = (def as any).default ?? (def.type === 'number' ? 0 : '');
-            } else {
-                initial[key] = null;
-            }
-        }
-        return initial;
-    });
+    const [values, setValues] = useState<Record<string, Input>>(inputSchema);
 
     const [submitted, setSubmitted] = useState(false);
     const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -48,7 +38,7 @@ export default function Lambda360Form({
     }, [lambda, values]);
 
     const handleChange = (key: string, value: any) => {
-        setValues(prev => ({ ...prev, [key]: value }));
+        setValues(prev => ({ ...prev, [key]: { ...prev[key], value } as Input }));
     };
 
     const handleAction = useCallback((out: Output) => {
@@ -105,7 +95,7 @@ export default function Lambda360Form({
                             key={key}
                             name={key}
                             def={def}
-                            value={values[key]}
+                            value={(values[key] as any).value}
                             onChange={(v) => handleChange(key, v)}
                             fileInputRefs={fileInputRefs}
                             readOnly={submitted}

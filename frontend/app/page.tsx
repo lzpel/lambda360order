@@ -219,17 +219,17 @@ export default function Home() {
           </p>
         </div>
         <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
+          display: "flex",
+          justifyContent: "center",
           gap: 20,
           maxWidth: 1000,
           margin: "0 auto",
         }}>
-          {list.slice(0, 8).map((item, i) => {
+          {list.filter(item => item.nameDirectory === "01").map((item, i) => {
             const displayName = item.name.replace(/^\d+_/, "");
             const desc = item.description.split("—")[0].replace(/^\d+\.\s*/, "").trim();
             return (
-              <Link href={`/out/${item.nameDirectory}`} key={i} style={{ textDecoration: "none" }}>
+              <Link href={`/out/${item.nameDirectory}`} key={i} style={{ textDecoration: "none", width: 240 }}>
                 <div style={{
                   backgroundColor: "#fff",
                   borderRadius: 8,

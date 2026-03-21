@@ -24,11 +24,13 @@ export const input: InputSchema = {
 
 export const lambda = (params: Record<string, Input>): Output[] => {
 	const input: InputSchema = params as InputSchema;
+	console.log(input);
 	const delta = [
-		input.depth.value - 430, 
+		input.depth.value - 430,
 		input.height.value - 75,
 		input.width.value - 302.2
 	];
+	console.log(delta);
 	return [
 		{
 			type: "shape",
@@ -63,9 +65,9 @@ export const lambda = (params: Record<string, Input>): Output[] => {
 		},
 		{ type: "message", messageType: "text", label: `価格: ¥${(5000 + input.width.value * 10).toLocaleString()}` },
 		{
-			type: "action", 
+			type: "action",
 			subject: "01_板金制御盤ボックス 見積もり送信",
-			label: "見積もりを送信", 
+			label: "見積もりを送信",
 			email_to: [input.email.value],
 			email_bcc: [],
 			slack: [],
